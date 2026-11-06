@@ -2,6 +2,7 @@
 <full-backup-content>
     <!-- Exclude database and security keys from unencrypted Android Cloud Auto Backup -->
     <!-- All backups are handled explicitly and securely via user-directed AES-256-GCM encrypted backups -->
+    <include domain="database" path="." />
     <exclude domain="database" path="property_crm_database.db" />
     <exclude domain="database" path="property_crm_database.db-wal" />
     <exclude domain="database" path="property_crm_database.db-shm" />
