@@ -193,6 +193,36 @@ class PreferenceManager(private val context: Context) {
         }
     }
 
+    suspend fun setAiGatewayUrl(url: String) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_AI_GATEWAY_URL] = url.trim().trimEnd('/')
+        }
+    }
+
+    suspend fun setAiApiKey(key: String) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_AI_API_KEY] = key.trim()
+        }
+    }
+
+    suspend fun setAiModel(model: String) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_AI_MODEL] = model.trim()
+        }
+    }
+
+    suspend fun setAiSystemPrompt(prompt: String) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_AI_SYSTEM_PROMPT] = prompt.trim()
+        }
+    }
+
+    suspend fun setAiTemperature(temp: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_AI_TEMPERATURE] = temp
+        }
+    }
+
     suspend fun setAiGatewayConfig(
         gatewayUrl: String,
         apiKey: String,
