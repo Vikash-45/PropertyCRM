@@ -5,12 +5,13 @@
     <string name="follow_ups">फॉलो-अप</string>
     <string name="settings">सेटिंग्स</string>
 
-    <!-- Dashboard -->
+    <!-- Dashboard Metrics -->
     <string name="active_customers">सक्रिय ग्राहक</string>
     <string name="today_pending">आज के कॉल</string>
     <string name="overdue">बाकी (ओवरड्यू)</string>
     <string name="upcoming">आगामी</string>
     <string name="completed">पूर्ण</string>
+    <string name="upcoming_visits">आने वाली साइट विज़िट</string>
     <string name="quick_actions">त्वरित कार्य</string>
     <string name="add_customer">नया ग्राहक जोड़ें</string>
     <string name="todays_followups">आज के फॉलो-अप</string>
@@ -23,8 +24,13 @@
     <string name="customer_phone">फ़ोन नंबर *</string>
     <string name="inquiry_reason">पूछताछ का कारण / आवश्यकता *</string>
     <string name="property_type">प्रॉपर्टी का प्रकार</string>
+    <string name="requirement_type">आवश्यकता का प्रकार</string>
     <string name="preferred_location">पसंदीदा स्थान</string>
-    <string name="budget">बजट</string>
+    <string name="preferred_size">पसंदीदा साइज़ (उदा. 1500 sq.ft, 3 BHK)</string>
+    <string name="preferred_contact_time">बातचीत का उत्तम समय (उदा. शाम 6-8 बजे)</string>
+    <string name="next_action">अगला कार्य</string>
+    <string name="assigned_person">जिम्मेदार व्यक्ति / एजेंट</string>
+    <string name="budget">बजट (रुपये ₹)</string>
     <string name="lead_source">कहाँ से संपर्क हुआ (लीड स्रोत)</string>
     <string name="first_visit_date">पहली मुलाक़ात की तारीख</string>
     <string name="initial_followup_date">फॉलो-अप की तारीख</string>
@@ -39,6 +45,12 @@
     <string name="duplicate_phone_warning">चेतावनी: इस फ़ोन नंबर वाला ग्राहक पहले से मौजूद है!</string>
     <string name="error_required_fields">कृपया सभी आवश्यक फ़ील्ड (नाम, फ़ोन, पूछताछ) भरें।</string>
 
+    <!-- Do Not Call -->
+    <string name="do_not_call">कॉल न करें (DNC)</string>
+    <string name="dnc_active_warning">यह ग्राहक Do Not Call सूची में है। दैनिक कॉल रिमाइंडर बंद हैं।</string>
+    <string name="dnc_call_prompt">ग्राहक DNC सूची में है। क्या आप फिर भी कॉल करना चाहते हैं?</string>
+    <string name="reactivate_calls">कॉल पुनः चालू करें</string>
+
     <!-- Property Types -->
     <string name="property_plot">प्लॉट</string>
     <string name="property_flat">फ्लैट</string>
@@ -47,13 +59,47 @@
     <string name="property_commercial">कमर्शियल</string>
     <string name="property_other">अन्य</string>
 
-    <!-- Customer Stages -->
+    <!-- Stages -->
     <string name="stage_new">नया (New)</string>
     <string name="stage_contacted">बातचीत हुई (Contacted)</string>
     <string name="stage_site_visit">साइट विज़िट (Site Visit)</string>
     <string name="stage_negotiation">सौदा बातचीत (Negotiation)</string>
     <string name="stage_won">सौदा पक्का (Won)</string>
     <string name="stage_lost">सौदा रद्द (Lost)</string>
+
+    <!-- Requirement Types -->
+    <string name="req_buy">खरीदना</string>
+    <string name="req_sell">बेचना</string>
+    <string name="req_rent">किराया</string>
+
+    <!-- Next Actions -->
+    <string name="act_call">कॉल</string>
+    <string name="act_site_visit">साइट विज़िट</string>
+    <string name="act_negotiation">सौदा बातचीत</string>
+    <string name="act_other">अन्य</string>
+
+    <!-- Call Outcomes -->
+    <string name="record_call_outcome">कॉल परिणाम दर्ज करें</string>
+    <string name="outcome_answered">बात हुई (Answered)</string>
+    <string name="outcome_no_answer">फ़ोन नहीं उठाया (No Answer)</string>
+    <string name="outcome_busy">व्यस्त (Busy)</string>
+    <string name="outcome_requested_callback">बाद में कॉल करने को कहा</string>
+    <string name="outcome_interested">रुचि है (Interested)</string>
+    <string name="outcome_not_interested">रुचि नहीं है (Not Interested)</string>
+    <string name="outcome_site_visit_requested">साइट विज़िट चाहिए</string>
+    <string name="outcome_negotiation">सौदा बातचीत जारी</string>
+    <string name="outcome_wrong_number">गलत नंबर (Wrong Number)</string>
+
+    <!-- Site Visits -->
+    <string name="site_visits">साइट विज़िट / मुलाक़ात</string>
+    <string name="schedule_visit">नई साइट विज़िट तय करें</string>
+    <string name="visit_location">प्रॉपर्टी / साइट का पता</string>
+    <string name="visit_date">विज़िट की तारीख</string>
+    <string name="visit_time">विज़िट का समय</string>
+    <string name="appointment_scheduled">तय हुई</string>
+    <string name="appointment_completed">संपन्न</string>
+    <string name="appointment_cancelled">रद्द</string>
+    <string name="appointment_rescheduled">तारीख बदली गई</string>
 
     <!-- Follow-up Filters & Status -->
     <string name="filter_today">आज</string>
@@ -78,11 +124,12 @@
 
     <!-- Details -->
     <string name="customer_details">ग्राहक का सम्पूर्ण विवरण</string>
+    <string name="interaction_timeline">बातचीत और कार्य इतिहास (Timeline)</string>
     <string name="followup_history">फॉलो-अप इतिहास</string>
     <string name="no_followup_history">कोई पिछला फॉलो-अप रिकॉर्ड नहीं मिला।</string>
     <string name="confirm_delete_customer">क्या आप इस ग्राहक और इनके सभी फॉलो-अप को हटाना चाहते हैं?</string>
 
-    <!-- Settings -->
+    <!-- Settings & Security -->
     <string name="notifications_reminders">सूचनाएं और अनुस्मारक</string>
     <string name="enable_daily_reminders">दैनिक रिमाइंडर चालू रखें</string>
     <string name="reminder_time">दैनिक रिमाइंडर समय</string>
@@ -94,8 +141,10 @@
     <string name="test_notification">अभी टेस्ट नोटिफिकेशन भेजें</string>
     <string name="data_backup_export">डेटा बैकअप एवं रिस्टोर</string>
     <string name="export_csv">ग्राहकों को CSV में निकालें (Excel)</string>
-    <string name="export_json">पूरा डेटा बैकअप लें (JSON)</string>
-    <string name="import_json">JSON से डेटा रिस्टोर करें</string>
+    <string name="export_json">सुरक्षित एन्क्रिप्टेड बैकअप लें (AES-256)</string>
+    <string name="import_json">एन्क्रिप्टेड बैकअप से डेटा रिस्टोर करें</string>
+    <string name="battery_troubleshooting">Xiaomi / MIUI / बैटरी ऑप्टिमाइज़ेशन निर्देश</string>
+    <string name="app_security_lock">ऐप पिन लॉक सुरक्षा</string>
     <string name="about_app">प्रॉपर्टी CRM के बारे में</string>
     <string name="about_app_desc">100% ऑफ़लाइन CRM प्रॉपर्टी डीलरों और रियल एस्टेट सलाहकारों के लिए। कभी भी ग्राहक फॉलो-अप न भूलें।</string>
 
@@ -103,8 +152,5 @@
     <string name="notification_channel_name">प्रॉपर्टी फॉलो-अप रिमाइंडर</string>
     <string name="notification_channel_desc">ग्राहकों को समय पर कॉल करने के दैनिक रिमाइंडर।</string>
     <string name="notification_title">प्रॉपर्टी फॉलो-अप अनुस्मारक</string>
-    <string name="notification_body_format">%1$d ग्राहकों से आज बात करनी है। %2$d पुराने फॉलो-अप छूटे हुए हैं।</string>
-    <string name="notification_body_today_only">%1$d ग्राहकों से आज बात करनी है।</string>
-    <string name="notification_body_overdue_only">%1$d पुराने फॉलो-अप बाकी हैं।</string>
     <string name="notification_action_open">फॉलो-अप देखें</string>
 </resources>

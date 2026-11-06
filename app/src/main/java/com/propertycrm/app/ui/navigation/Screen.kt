@@ -23,6 +23,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object CustomerDetail : Screen("customer_detail/{customerId}", "Customer Details") {
         fun createRoute(customerId: Long): String = "customer_detail/$customerId"
     }
+    object DailySummary : Screen("daily_summary", "Daily Reminder Summary")
 
     companion object {
         val bottomNavItems = listOf(Dashboard, Customers, FollowUps, Settings)

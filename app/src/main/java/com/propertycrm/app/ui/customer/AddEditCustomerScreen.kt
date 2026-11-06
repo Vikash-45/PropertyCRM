@@ -39,6 +39,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -61,7 +63,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.propertycrm.app.R
 import com.propertycrm.app.data.model.CustomerStage
+import com.propertycrm.app.data.model.NextAction
 import com.propertycrm.app.data.model.PropertyType
+import com.propertycrm.app.data.model.RequirementType
 import com.propertycrm.app.ui.theme.DarkBackground
 import com.propertycrm.app.ui.theme.DarkBorder
 import com.propertycrm.app.ui.theme.DarkSurface
@@ -92,7 +96,7 @@ fun AddEditCustomerScreen(
         viewModel.eventFlow.collect { event ->
             when (event) {
                 is AddEditEvent.Saved -> onNavigateBack()
-                is AddEditEvent.Error -> { /* Handled via validationError state */ }
+                is AddEditEvent.Error -> { /* Handled via error banner */ }
             }
         }
     }
@@ -155,7 +159,7 @@ fun AddEditCustomerScreen(
                 }
             }
 
-            // Duplicate phone warning banner (Requirement: Warn about duplicate phone without blocking)
+            // Duplicate phone warning banner
             if (uiState.isDuplicatePhone) {
                 Box(
                     modifier = Modifier
@@ -178,7 +182,7 @@ fun AddEditCustomerScreen(
                 }
             }
 
-            // Customer Name (Required)
+            // Customer Name
             OutlinedTextField(
                 value = uiState.name,
                 onValueChange = { viewModel.onNameChange(it) },
@@ -188,7 +192,7 @@ fun AddEditCustomerScreen(
                 singleLine = true
             )
 
-            // Phone Number (Required)
+            // Phone Number (with +91 Indian default)
             OutlinedTextField(
                 value = uiState.phone,
                 onValueChange = { viewModel.onPhoneChange(it) },
@@ -199,7 +203,7 @@ fun AddEditCustomerScreen(
                 singleLine = true
             )
 
-            // Inquiry Reason (Required)
+            // Inquiry Reason
             OutlinedTextField(
                 value = uiState.inquiryReason,
                 onValueChange = { viewModel.onInquiryReasonChange(it) },
@@ -208,6 +212,32 @@ fun AddEditCustomerScreen(
                 modifier = Modifier.fillMaxWidth(),
                 colors = getDarkTextFieldColors()
             )
+
+            // Requirement Type (Buy / Sell / Rent) (Item 15)
+            Text(
+                text = stringResource(R.string.requirement_type),
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary
+            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                RequirementType.values().forEach { req ->
+                    val selected = uiState.requirementType == req
+                    FilterChip(
+                        selected = selected,
+                        onClick = { viewModel.onRequirementTypeChange(req) },
+                        label = { Text(req.getDisplayName()) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = PrimaryBlue,
+                            selectedLabelColor = Color.Black,
+                            containerColor = DarkSurface,
+                            labelColor = TextSecondary
+                        )
+                    )
+                }
+            }
 
             // Property Type
             Text(
@@ -261,7 +291,33 @@ fun AddEditCustomerScreen(
                 }
             }
 
-            // Preferred Location & Budget
+            // Next Action (Item 15)
+            Text(
+                text = stringResource(R.string.next_action),
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary
+            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                NextAction.values().forEach { act ->
+                    val selected = uiState.nextAction == act
+                    FilterChip(
+                        selected = selected,
+                        onClick = { viewModel.onNextActionChange(act) },
+                        label = { Text(act.getDisplayName()) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = PrimaryBlue,
+                            selectedLabelColor = Color.Black,
+                            containerColor = DarkSurface,
+                            labelColor = TextSecondary
+                        )
+                    )
+                }
+            }
+
+            // Preferred Location & Preferred Size
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -275,26 +331,89 @@ fun AddEditCustomerScreen(
                     singleLine = true
                 )
                 OutlinedTextField(
-                    value = uiState.budget,
-                    onValueChange = { viewModel.onBudgetChange(it) },
-                    label = { Text(stringResource(R.string.budget)) },
-                    placeholder = { Text("e.g. 50L - 70L") },
+                    value = uiState.preferredSize,
+                    onValueChange = { viewModel.onPreferredSizeChange(it) },
+                    label = { Text("Size (sq.ft / BHK)") },
+                    placeholder = { Text("e.g. 1500 sq.ft") },
                     modifier = Modifier.weight(1f),
                     colors = getDarkTextFieldColors(),
                     singleLine = true
                 )
             }
 
-            // Lead Source
-            OutlinedTextField(
-                value = uiState.leadSource,
-                onValueChange = { viewModel.onLeadSourceChange(it) },
-                label = { Text(stringResource(R.string.lead_source)) },
-                placeholder = { Text("e.g. Walk-in, 99acres, Referral") },
+            // Budget (INR ₹) & Preferred Contact Time
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                colors = getDarkTextFieldColors(),
-                singleLine = true
-            )
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedTextField(
+                    value = uiState.budget,
+                    onValueChange = { viewModel.onBudgetChange(it) },
+                    label = { Text(stringResource(R.string.budget)) },
+                    placeholder = { Text("e.g. 75 Lakh / 1.2 Cr") },
+                    modifier = Modifier.weight(1f),
+                    colors = getDarkTextFieldColors(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = uiState.preferredContactTime,
+                    onValueChange = { viewModel.onPreferredContactTimeChange(it) },
+                    label = { Text("Contact Time") },
+                    placeholder = { Text("e.g. 6:00 PM - 8:00 PM") },
+                    modifier = Modifier.weight(1f),
+                    colors = getDarkTextFieldColors(),
+                    singleLine = true
+                )
+            }
+
+            // Lead Source & Assigned Person
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedTextField(
+                    value = uiState.leadSource,
+                    onValueChange = { viewModel.onLeadSourceChange(it) },
+                    label = { Text(stringResource(R.string.lead_source)) },
+                    placeholder = { Text("Referral, Walk-in, Online") },
+                    modifier = Modifier.weight(1f),
+                    colors = getDarkTextFieldColors(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = uiState.assignedPerson,
+                    onValueChange = { viewModel.onAssignedPersonChange(it) },
+                    label = { Text(stringResource(R.string.assigned_person)) },
+                    placeholder = { Text("Agent name") },
+                    modifier = Modifier.weight(1f),
+                    colors = getDarkTextFieldColors(),
+                    singleLine = true
+                )
+            }
+
+            // Do Not Call (DNC) Switch (Item 4)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(DarkSurfaceVariant)
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = stringResource(R.string.do_not_call), color = if (uiState.isDoNotCall) StatusOverdue else TextPrimary, fontWeight = FontWeight.Bold)
+                    Text(text = "Exclude customer from daily reminder calls", color = TextSecondary, fontSize = 12.sp)
+                }
+                Switch(
+                    checked = uiState.isDoNotCall,
+                    onCheckedChange = { viewModel.onDoNotCallToggle(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = StatusOverdue
+                    )
+                )
+            }
 
             // First Visit Date
             OutlinedButton(
@@ -356,7 +475,7 @@ fun AddEditCustomerScreen(
                 value = uiState.notes,
                 onValueChange = { viewModel.onNotesChange(it) },
                 label = { Text(stringResource(R.string.notes)) },
-                placeholder = { Text("Additional customer preferences, requirements...") },
+                placeholder = { Text("Special requirements, customer notes...") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = getDarkTextFieldColors(),
                 minLines = 3
@@ -366,15 +485,13 @@ fun AddEditCustomerScreen(
         }
     }
 
-    // First Visit Date Picker
+    // Date Pickers
     if (showFirstVisitDatePicker) {
-        val cal = Calendar.getInstance()
-        if (uiState.firstVisitDate != null) cal.timeInMillis = uiState.firstVisitDate!!
+        val cal = Calendar.getInstance().apply { if (uiState.firstVisitDate != null) timeInMillis = uiState.firstVisitDate!! }
         DatePickerDialog(
             context,
             { _, year, month, day ->
-                val newCal = Calendar.getInstance()
-                newCal.set(year, month, day, 0, 0, 0)
+                val newCal = Calendar.getInstance().apply { set(year, month, day, 0, 0, 0) }
                 viewModel.onFirstVisitDateChange(newCal.timeInMillis)
                 showFirstVisitDatePicker = false
             },
@@ -387,15 +504,12 @@ fun AddEditCustomerScreen(
         }
     }
 
-    // Follow-up Date Picker
     if (showFollowUpDatePicker) {
-        val cal = Calendar.getInstance()
-        if (uiState.initialFollowUpDate != null) cal.timeInMillis = uiState.initialFollowUpDate!!
+        val cal = Calendar.getInstance().apply { if (uiState.initialFollowUpDate != null) timeInMillis = uiState.initialFollowUpDate!! }
         DatePickerDialog(
             context,
             { _, year, month, day ->
-                val newCal = Calendar.getInstance()
-                newCal.set(year, month, day, 0, 0, 0)
+                val newCal = Calendar.getInstance().apply { set(year, month, day, 0, 0, 0) }
                 viewModel.onInitialFollowUpDateChange(newCal.timeInMillis)
                 showFollowUpDatePicker = false
             },
@@ -408,14 +522,3 @@ fun AddEditCustomerScreen(
         }
     }
 }
-
-@Composable
-fun getDarkTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = TextPrimary,
-    unfocusedTextColor = TextPrimary,
-    focusedBorderColor = PrimaryBlue,
-    unfocusedBorderColor = DarkBorder,
-    focusedLabelColor = PrimaryBlue,
-    unfocusedLabelColor = TextSecondary,
-    cursorColor = PrimaryBlue
-)

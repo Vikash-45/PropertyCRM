@@ -45,12 +45,43 @@ enum class CustomerStage {
     }
 }
 
+enum class RequirementType {
+    BUY,
+    SELL,
+    RENT;
+
+    fun getDisplayName(): String {
+        return when (this) {
+            BUY -> "Buy"
+            SELL -> "Sell"
+            RENT -> "Rent"
+        }
+    }
+}
+
+enum class NextAction {
+    CALL,
+    SITE_VISIT,
+    NEGOTIATION,
+    OTHER;
+
+    fun getDisplayName(): String {
+        return when (this) {
+            CALL -> "Call"
+            SITE_VISIT -> "Site Visit"
+            NEGOTIATION -> "Negotiation"
+            OTHER -> "Other"
+        }
+    }
+}
+
 @Entity(
     tableName = "customers",
     indices = [
         Index(value = ["phone"]),
         Index(value = ["stage"]),
-        Index(value = ["is_archived"])
+        Index(value = ["is_archived"]),
+        Index(value = ["is_do_not_call"])
     ]
 )
 data class Customer(
@@ -89,6 +120,24 @@ data class Customer(
 
     @ColumnInfo(name = "is_archived")
     val isArchived: Boolean = false,
+
+    @ColumnInfo(name = "requirement_type")
+    val requirementType: RequirementType = RequirementType.BUY,
+
+    @ColumnInfo(name = "preferred_size")
+    val preferredSize: String? = null,
+
+    @ColumnInfo(name = "preferred_contact_time")
+    val preferredContactTime: String? = null,
+
+    @ColumnInfo(name = "next_action")
+    val nextAction: NextAction = NextAction.CALL,
+
+    @ColumnInfo(name = "assigned_person")
+    val assignedPerson: String? = null,
+
+    @ColumnInfo(name = "is_do_not_call")
+    val isDoNotCall: Boolean = false,
 
     @ColumnInfo(name = "created_at")
     val createdAt: Long = System.currentTimeMillis(),

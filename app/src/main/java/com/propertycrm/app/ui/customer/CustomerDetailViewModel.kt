@@ -2,16 +2,22 @@ package com.propertycrm.app.ui.customer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.propertycrm.app.data.model.AppointmentStatus
+import com.propertycrm.app.data.model.CallOutcome
+import com.propertycrm.app.data.model.CustomerInteraction
 import com.propertycrm.app.data.model.CustomerStage
 import com.propertycrm.app.data.model.CustomerWithFollowUps
+import com.propertycrm.app.data.model.SiteVisit
 import com.propertycrm.app.data.repository.CustomerRepository
 import com.propertycrm.app.data.repository.FollowUpRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 sealed class CustomerDetailEvent {
@@ -26,6 +32,14 @@ class CustomerDetailViewModel(
 
     private val _customerData = MutableStateFlow<CustomerWithFollowUps?>(null)
     val customerData: StateFlow<CustomerWithFollowUps?> = _customerData.asStateFlow()
+
+    val interactions: StateFlow<List<CustomerInteraction>> =
+        customerRepository.getCustomerInteractions(customerId)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val siteVisits: StateFlow<List<SiteVisit>> =
+        customerRepository.getCustomerSiteVisits(customerId)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _eventFlow = MutableSharedFlow<CustomerDetailEvent>()
     val eventFlow: SharedFlow<CustomerDetailEvent> = _eventFlow.asSharedFlow()
@@ -45,6 +59,31 @@ class CustomerDetailViewModel(
     fun updateStage(stage: CustomerStage) {
         viewModelScope.launch {
             customerRepository.updateCustomerStage(customerId, stage)
+        }
+    }
+
+    fun toggleDoNotCall() {
+        val current = _customerData.value?.customer ?: return
+        viewModelScope.launch {
+            customerRepository.setCustomerDoNotCall(customerId, !current.isDoNotCall)
+        }
+    }
+
+    fun recordCallOutcome(outcome: CallOutcome, notes: String, nextDate: Long?, nextTime: String?) {
+        viewModelScope.launch {
+            customerRepository.recordCallOutcome(customerId, outcome, notes, nextDate, nextTime)
+        }
+    }
+
+    fun scheduleSiteVisit(propertyLocation: String, visitDate: Long, visitTime: String?, notes: String) {
+        viewModelScope.launch {
+            customerRepository.scheduleSiteVisit(customerId, propertyLocation, visitDate, visitTime, notes)
+        }
+    }
+
+    fun updateSiteVisitStatus(visitId: Long, status: AppointmentStatus, notes: String = "") {
+        viewModelScope.launch {
+            customerRepository.updateSiteVisitStatus(visitId, customerId, status, notes)
         }
     }
 

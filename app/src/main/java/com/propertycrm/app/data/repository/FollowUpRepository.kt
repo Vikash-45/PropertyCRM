@@ -1,14 +1,25 @@
 package com.propertycrm.app.data.repository
 
+import com.propertycrm.app.data.local.CustomerInteractionDao
 import com.propertycrm.app.data.local.FollowUpDao
+import com.propertycrm.app.data.model.CustomerInteraction
 import com.propertycrm.app.data.model.FollowUp
 import com.propertycrm.app.data.model.FollowUpStatus
 import com.propertycrm.app.data.model.FollowUpWithCustomer
+import com.propertycrm.app.data.model.InteractionType
 import com.propertycrm.app.util.DateUtils
 import kotlinx.coroutines.flow.Flow
 
+data class NotificationSummary(
+    val uniqueTodayCustomers: Int,
+    val totalTodayTasks: Int,
+    val uniqueOverdueCustomers: Int,
+    val totalOverdueTasks: Int
+)
+
 class FollowUpRepository(
-    private val followUpDao: FollowUpDao
+    private val followUpDao: FollowUpDao,
+    private val customerInteractionDao: CustomerInteractionDao
 ) {
 
     fun getFollowUpsForCustomer(customerId: Long): Flow<List<FollowUp>> =
@@ -35,34 +46,45 @@ class FollowUpRepository(
     fun getAllFollowUps(): Flow<List<FollowUpWithCustomer>> =
         followUpDao.getAllFollowUps()
 
-    // Counts for Dashboard
-    fun countTodayPending(): Flow<Int> {
+    // Distinct metrics for Dashboard (Item 7)
+    fun countTodayUniqueCustomers(): Flow<Int> {
         val now = System.currentTimeMillis()
-        return followUpDao.countTodayPendingFlow(DateUtils.getStartOfDay(now), DateUtils.getEndOfDay(now))
+        return followUpDao.countTodayUniqueCustomersFlow(DateUtils.getStartOfDay(now), DateUtils.getEndOfDay(now))
     }
 
-    fun countOverdue(): Flow<Int> {
+    fun countTodayTotalTasks(): Flow<Int> {
         val now = System.currentTimeMillis()
-        return followUpDao.countOverdueFlow(DateUtils.getStartOfDay(now))
+        return followUpDao.countTodayTotalTasksFlow(DateUtils.getStartOfDay(now), DateUtils.getEndOfDay(now))
     }
 
-    fun countUpcoming(): Flow<Int> {
+    fun countOverdueUniqueCustomers(): Flow<Int> {
         val now = System.currentTimeMillis()
-        return followUpDao.countUpcomingFlow(DateUtils.getEndOfDay(now))
+        return followUpDao.countOverdueUniqueCustomersFlow(DateUtils.getStartOfDay(now))
     }
 
-    fun countCompleted(): Flow<Int> = followUpDao.countCompletedFlow()
+    fun countOverdueTotalTasks(): Flow<Int> {
+        val now = System.currentTimeMillis()
+        return followUpDao.countOverdueTotalTasksFlow(DateUtils.getStartOfDay(now))
+    }
+
+    fun countCompletedTasks(): Flow<Int> = followUpDao.countCompletedTasksFlow()
+
+    fun countUpcomingTasks(): Flow<Int> {
+        val now = System.currentTimeMillis()
+        return followUpDao.countUpcomingTasksFlow(DateUtils.getEndOfDay(now))
+    }
 
     /**
-     * Synchronous check for notification evaluation:
-     * Returns Pair(todayPendingCount, overdueCount)
+     * Synchronous check for notification evaluation (Item 8)
      */
-    suspend fun getNotificationCounts(now: Long = System.currentTimeMillis()): Pair<Int, Int> {
+    suspend fun getNotificationSummary(now: Long = System.currentTimeMillis()): NotificationSummary {
         val startOfDay = DateUtils.getStartOfDay(now)
         val endOfDay = DateUtils.getEndOfDay(now)
-        val todayPending = followUpDao.countTodayPendingSync(startOfDay, endOfDay)
-        val overdue = followUpDao.countOverdueSync(startOfDay)
-        return Pair(todayPending, overdue)
+        val uniqueToday = followUpDao.countTodayUniqueCustomersSync(startOfDay, endOfDay)
+        val totalToday = followUpDao.countTodayTotalTasksSync(startOfDay, endOfDay)
+        val uniqueOverdue = followUpDao.countOverdueUniqueCustomersSync(startOfDay)
+        val totalOverdue = followUpDao.countOverdueTotalTasksSync(startOfDay)
+        return NotificationSummary(uniqueToday, totalToday, uniqueOverdue, totalOverdue)
     }
 
     suspend fun addFollowUp(
@@ -79,16 +101,37 @@ class FollowUpRepository(
             status = FollowUpStatus.PENDING,
             createdAt = System.currentTimeMillis()
         )
-        return followUpDao.insertFollowUp(followUp)
+        val id = followUpDao.insertFollowUp(followUp)
+
+        customerInteractionDao.insertInteraction(
+            CustomerInteraction(
+                customerId = customerId,
+                type = InteractionType.FOLLOW_UP_CREATED,
+                notes = "Scheduled follow-up for ${DateUtils.formatDate(dateMillis)}${if (notes.isNotBlank()) ": $notes" else ""}"
+            )
+        )
+        return id
     }
 
     suspend fun markCompleted(id: Long, completionNotes: String = "") {
+        val fu = followUpDao.getFollowUpByIdSync(id)
         followUpDao.markCompleted(id, completionNotes.trim(), System.currentTimeMillis())
+
+        if (fu != null) {
+            customerInteractionDao.insertInteraction(
+                CustomerInteraction(
+                    customerId = fu.customerId,
+                    type = InteractionType.NOTE,
+                    notes = "Completed follow-up from ${DateUtils.formatDate(fu.followUpDate)}${if (completionNotes.isNotBlank()) ": $completionNotes" else ""}"
+                )
+            )
+        }
     }
 
     /**
-     * Reschedules a follow-up. Preserves history:
-     * Marks previous pending follow-up as completed/cancelled with note, and inserts a new pending follow-up!
+     * Reschedules follow-up:
+     * Completes or cancels old pending task with explicit rescheduled status and creates a new task (Item 6).
+     * Preserves entire historical trail.
      */
     suspend fun rescheduleFollowUp(
         existingFollowUpId: Long,
@@ -99,15 +142,16 @@ class FollowUpRepository(
         val existing = followUpDao.getFollowUpByIdSync(existingFollowUpId)
         val customerId = existing?.customerId ?: return 0L
 
-        // Mark existing follow up with note indicating it was rescheduled
         val rescheduleNote = if (reasonNotes.isNotBlank()) {
             "Rescheduled: $reasonNotes"
         } else {
             "Rescheduled to ${DateUtils.formatDate(newDateMillis)}"
         }
-        followUpDao.markCompleted(existingFollowUpId, rescheduleNote, System.currentTimeMillis())
 
-        // Insert new pending record to keep full chronological history
+        // Cancel previous pending task with explicit note
+        followUpDao.markCancelled(existingFollowUpId, rescheduleNote)
+
+        // Insert new pending follow-up task
         val newFollowUp = FollowUp(
             customerId = customerId,
             followUpDate = DateUtils.getStartOfDay(newDateMillis),
@@ -116,7 +160,16 @@ class FollowUpRepository(
             status = FollowUpStatus.PENDING,
             createdAt = System.currentTimeMillis()
         )
-        return followUpDao.insertFollowUp(newFollowUp)
+        val newId = followUpDao.insertFollowUp(newFollowUp)
+
+        customerInteractionDao.insertInteraction(
+            CustomerInteraction(
+                customerId = customerId,
+                type = InteractionType.RESCHEDULED,
+                notes = "Follow-up rescheduled to ${DateUtils.formatDate(newDateMillis)}${if (reasonNotes.isNotBlank()) " ($reasonNotes)" else ""}"
+            )
+        )
+        return newId
     }
 
     suspend fun deleteFollowUp(id: Long) {

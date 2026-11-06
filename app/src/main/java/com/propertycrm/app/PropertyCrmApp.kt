@@ -42,12 +42,14 @@ class PropertyCrmApp : Application() {
         database = AppDatabase.getInstance(this)
         val customerDao = database.customerDao()
         val followUpDao = database.followUpDao()
+        val siteVisitDao = database.siteVisitDao()
+        val customerInteractionDao = database.customerInteractionDao()
 
         // Initialize Preferences & Repositories
         preferenceManager = PreferenceManager(this)
-        customerRepository = CustomerRepository(customerDao, followUpDao)
-        followUpRepository = FollowUpRepository(followUpDao)
-        backupRepository = BackupRepository(customerDao, followUpDao)
+        customerRepository = CustomerRepository(customerDao, followUpDao, siteVisitDao, customerInteractionDao)
+        followUpRepository = FollowUpRepository(followUpDao, customerInteractionDao)
+        backupRepository = BackupRepository(database)
 
         // Initialize Notification & Scheduler
         reminderNotificationManager = ReminderNotificationManager(this)

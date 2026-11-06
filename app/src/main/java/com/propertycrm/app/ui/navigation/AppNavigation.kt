@@ -27,16 +27,15 @@ import com.propertycrm.app.ui.customer.CustomerListScreen
 import com.propertycrm.app.ui.customer.CustomerListViewModel
 import com.propertycrm.app.ui.dashboard.DashboardScreen
 import com.propertycrm.app.ui.dashboard.DashboardViewModel
+import com.propertycrm.app.ui.followup.DailyReminderSummaryScreen
 import com.propertycrm.app.ui.followup.FollowUpScreen
 import com.propertycrm.app.ui.followup.FollowUpViewModel
 import com.propertycrm.app.ui.settings.SettingsScreen
 import com.propertycrm.app.ui.settings.SettingsViewModel
 import com.propertycrm.app.ui.theme.DarkBackground
-import com.propertycrm.app.ui.theme.DarkBorder
 import com.propertycrm.app.ui.theme.DarkSurface
 import com.propertycrm.app.ui.theme.PrimaryBlue
 import com.propertycrm.app.ui.theme.TextMuted
-import com.propertycrm.app.ui.theme.TextPrimary
 
 @Composable
 fun AppNavigation(
@@ -160,7 +159,19 @@ fun AppNavigation(
                 )
             }
 
-            // Screen 4: Customer Details
+            // Screen 4: Combined Daily Reminder Summary (Item 9)
+            composable(Screen.DailySummary.route) {
+                DailyReminderSummaryScreen(
+                    followUpRepository = appContainer.followUpRepository,
+                    customerRepository = appContainer.customerRepository,
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToCustomerDetail = { id ->
+                        navController.navigate(Screen.CustomerDetail.createRoute(id))
+                    }
+                )
+            }
+
+            // Screen 5: Customer Details
             composable(
                 route = Screen.CustomerDetail.route,
                 arguments = listOf(
@@ -184,7 +195,7 @@ fun AppNavigation(
                 )
             }
 
-            // Screen 5: Add Customer
+            // Screen 6: Add Customer
             composable(Screen.AddCustomer.route) {
                 val vm = AddEditCustomerViewModel(
                     customerRepository = appContainer.customerRepository
@@ -195,7 +206,7 @@ fun AppNavigation(
                 )
             }
 
-            // Screen 6: Edit Customer
+            // Screen 7: Edit Customer
             composable(
                 route = Screen.EditCustomer.route,
                 arguments = listOf(
@@ -215,7 +226,7 @@ fun AppNavigation(
                 )
             }
 
-            // Screen 7: Settings
+            // Screen 8: Settings
             composable(Screen.Settings.route) {
                 val vm = SettingsViewModel(
                     preferenceManager = appContainer.preferenceManager,

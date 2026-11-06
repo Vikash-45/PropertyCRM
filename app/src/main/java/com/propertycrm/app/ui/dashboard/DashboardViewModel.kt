@@ -2,10 +2,10 @@ package com.propertycrm.app.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.propertycrm.app.data.model.CallOutcome
 import com.propertycrm.app.data.model.FollowUpWithCustomer
 import com.propertycrm.app.data.repository.CustomerRepository
 import com.propertycrm.app.data.repository.FollowUpRepository
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -14,10 +14,13 @@ import kotlinx.coroutines.launch
 
 data class DashboardUiState(
     val activeCustomersCount: Int = 0,
-    val todayDueCount: Int = 0,
-    val overdueCount: Int = 0,
-    val upcomingCount: Int = 0,
-    val completedCount: Int = 0,
+    val uniqueTodayCustomersCount: Int = 0,
+    val totalTodayTasksCount: Int = 0,
+    val uniqueOverdueCustomersCount: Int = 0,
+    val totalOverdueTasksCount: Int = 0,
+    val upcomingTasksCount: Int = 0,
+    val completedTasksCount: Int = 0,
+    val upcomingSiteVisitsCount: Int = 0,
     val todayFollowUps: List<FollowUpWithCustomer> = emptyList(),
     val isLoading: Boolean = false
 )
@@ -29,18 +32,24 @@ class DashboardViewModel(
 
     val uiState: StateFlow<DashboardUiState> = combine(
         customerRepository.countActiveCustomers(),
-        followUpRepository.countTodayPending(),
-        followUpRepository.countOverdue(),
-        followUpRepository.countUpcoming(),
-        followUpRepository.countCompleted(),
+        followUpRepository.countTodayUniqueCustomers(),
+        followUpRepository.countTodayTotalTasks(),
+        followUpRepository.countOverdueUniqueCustomers(),
+        followUpRepository.countOverdueTotalTasks(),
+        followUpRepository.countUpcomingTasks(),
+        followUpRepository.countCompletedTasks(),
+        customerRepository.countUpcomingSiteVisits(),
         followUpRepository.getTodayFollowUps()
-    ) { activeCust, todayDue, overdue, upcoming, completed, todayList ->
+    ) { activeCust, uniqueToday, totalToday, uniqueOverdue, totalOverdue, upcoming, completed, upcomingVisits, todayList ->
         DashboardUiState(
             activeCustomersCount = activeCust,
-            todayDueCount = todayDue,
-            overdueCount = overdue,
-            upcomingCount = upcoming,
-            completedCount = completed,
+            uniqueTodayCustomersCount = uniqueToday,
+            totalTodayTasksCount = totalToday,
+            uniqueOverdueCustomersCount = uniqueOverdue,
+            totalOverdueTasksCount = totalOverdue,
+            upcomingTasksCount = upcoming,
+            completedTasksCount = completed,
+            upcomingSiteVisitsCount = upcomingVisits,
             todayFollowUps = todayList,
             isLoading = false
         )
@@ -59,6 +68,18 @@ class DashboardViewModel(
     fun rescheduleFollowUp(id: Long, newDate: Long, newTime: String?, reason: String) {
         viewModelScope.launch {
             followUpRepository.rescheduleFollowUp(id, newDate, newTime, reason)
+        }
+    }
+
+    fun recordCallOutcome(
+        customerId: Long,
+        outcome: CallOutcome,
+        notes: String,
+        nextDate: Long?,
+        nextTime: String?
+    ) {
+        viewModelScope.launch {
+            customerRepository.recordCallOutcome(customerId, outcome, notes, nextDate, nextTime)
         }
     }
 }

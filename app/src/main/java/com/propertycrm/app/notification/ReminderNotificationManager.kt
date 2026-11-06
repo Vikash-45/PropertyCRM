@@ -21,13 +21,24 @@ class ReminderNotificationManager(private val context: Context) {
         const val CHANNEL_ID = "property_followup_reminders"
         const val NOTIFICATION_ID = 1001
         const val EXTRA_NAVIGATE_TO = "NAVIGATE_TO"
-        const val EXTRA_FILTER = "FILTER"
-        const val DESTINATION_FOLLOW_UPS = "follow_ups"
-        const val FILTER_TODAY = "TODAY"
+        const val DESTINATION_DAILY_SUMMARY = "daily_summary"
     }
 
     init {
         createNotificationChannel()
+    }
+
+    fun areNotificationsEnabled(): Boolean {
+        val manager = NotificationManagerCompat.from(context)
+        if (!manager.areNotificationsEnabled()) return false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val systemManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            val channel = systemManager?.getNotificationChannel(CHANNEL_ID)
+            if (channel != null && channel.importance == NotificationManager.IMPORTANCE_NONE) {
+                return false
+            }
+        }
+        return true
     }
 
     fun createNotificationChannel() {
@@ -48,43 +59,44 @@ class ReminderNotificationManager(private val context: Context) {
     }
 
     /**
-     * Evaluates pending follow-ups due today and overdue.
-     * If total is 0, suppresses notification.
-     * Otherwise displays a grouped summary notification.
+     * Checks today's and overdue follow-up counts and unique customer counts.
+     * Cancels / suppresses notification if no eligible tasks remain.
      */
     suspend fun checkAndShowDailyReminderNotification(forceShowTest: Boolean = false) = withContext(Dispatchers.IO) {
         val database = AppDatabase.getInstance(context)
-        val repository = FollowUpRepository(database.followUpDao())
+        val repository = FollowUpRepository(database.followUpDao(), database.customerInteractionDao())
 
-        val (todayCount, overdueCount) = repository.getNotificationCounts()
+        val summary = repository.getNotificationSummary()
+        val totalPendingTasks = summary.totalTodayTasks + summary.totalOverdueTasks
+        val totalUniqueCustomers = summary.uniqueTodayCustomers + summary.uniqueOverdueCustomers
 
-        // Requirement 13: Suppress the notification when there are no due or overdue customers
-        if (!forceShowTest && todayCount == 0 && overdueCount == 0) {
+        // Suppress notification if 0 eligible tasks (Item 10)
+        if (!forceShowTest && totalPendingTasks == 0) {
+            NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
             return@withContext
         }
 
-        val testPrefix = if (forceShowTest && todayCount == 0 && overdueCount == 0) "[Test] " else ""
+        val testPrefix = if (forceShowTest && totalPendingTasks == 0) "[Test] " else ""
 
         val bodyText = when {
-            todayCount > 0 && overdueCount > 0 -> {
-                context.getString(R.string.notification_body_format, todayCount, overdueCount)
+            summary.totalTodayTasks > 0 && summary.totalOverdueTasks > 0 -> {
+                "${summary.uniqueTodayCustomers} customer(s) due today (${summary.totalTodayTasks} calls). ${summary.uniqueOverdueCustomers} overdue (${summary.totalOverdueTasks} calls)."
             }
-            todayCount > 0 -> {
-                context.getString(R.string.notification_body_today_only, todayCount)
+            summary.totalTodayTasks > 0 -> {
+                "${summary.uniqueTodayCustomers} customer(s) need follow-up today (${summary.totalTodayTasks} total tasks)."
             }
-            overdueCount > 0 -> {
-                context.getString(R.string.notification_body_overdue_only, overdueCount)
+            summary.totalOverdueTasks > 0 -> {
+                "${summary.uniqueOverdueCustomers} customer(s) are overdue for calls (${summary.totalOverdueTasks} total tasks)."
             }
             else -> {
                 "Notification system active. All follow-ups are up to date!"
             }
         }
 
-        // Tap action: Opens MainActivity with deep-link to Today's follow-ups
+        // Deep-link to Combined Daily Summary (Section A: Today + Section B: Overdue) (Item 9)
         val contentIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(EXTRA_NAVIGATE_TO, DESTINATION_FOLLOW_UPS)
-            putExtra(EXTRA_FILTER, FILTER_TODAY)
+            putExtra(EXTRA_NAVIGATE_TO, DESTINATION_DAILY_SUMMARY)
         }
 
         val pendingIntent = PendingIntent.getActivity(
@@ -101,12 +113,12 @@ class ReminderNotificationManager(private val context: Context) {
             .setStyle(NotificationCompat.BigTextStyle().bigText(bodyText))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE) // Requirement 14: Never expose sensitive notes or phones on lock screen
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .addAction(
                 R.drawable.ic_launcher_foreground,
-                context.getString(R.string.notification_action_open),
+                "Review Calls",
                 pendingIntent
             )
             .build()
@@ -114,7 +126,7 @@ class ReminderNotificationManager(private val context: Context) {
         try {
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
         } catch (e: SecurityException) {
-            // Permission denied - handle gracefully without crashing (Requirement 6)
+            // Permission denied - safe handling
         }
     }
 }

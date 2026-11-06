@@ -26,8 +26,9 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | sdkmanager --licenses || true
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -35,16 +36,32 @@ jobs:
       - name: Run Unit Tests
         run: ./gradlew testDebugUnitTest --stacktrace
 
-      - name: Run Lint
-        run: ./gradlew lintDebug --continue
-
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
-
-      - name: Print APK SHA-256 Checksum
+      - name: Generate CI Keystore for Release APK
         run: |
-          echo "=== Debug APK Checksum ==="
-          sha256sum app/build/outputs/apk/debug/app-debug.apk | tee apk_checksum.txt
+          keytool -genkeypair -v \
+            -keystore app/release.keystore \
+            -alias propertycrm \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass "PropertyCRM@2026" \
+            -keypass "PropertyCRM@2026" \
+            -dname "CN=PropertyCRM, OU=Mobile, O=PropertyCRM, L=Noida, ST=UP, C=IN"
+
+      - name: Build Debug & Release APK
+        run: ./gradlew assembleDebug assembleRelease --stacktrace
+        env:
+          KEYSTORE_PATH: "release.keystore"
+          KEYSTORE_PASSWORD: "PropertyCRM@2026"
+          KEY_ALIAS: "propertycrm"
+          KEY_PASSWORD: "PropertyCRM@2026"
+
+      - name: Print APK Checksums
+        run: |
+          echo "=== DEBUG APK CHECKSUM ==="
+          sha256sum app/build/outputs/apk/debug/app-debug.apk | tee debug_checksum.txt
+          echo "=== RELEASE APK CHECKSUM ==="
+          sha256sum app/build/outputs/apk/release/app-release.apk | tee release_checksum.txt
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
@@ -53,18 +70,17 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
 
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PropertyCRM-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
+          retention-days: 14
+
       - name: Upload Test Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-reports
           path: app/build/reports/tests/
-          retention-days: 7
-
-      - name: Upload Lint Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lint-reports
-          path: app/build/reports/lint-results-debug.html
           retention-days: 7

@@ -1,7 +1,16 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
+}
+
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -12,8 +21,8 @@ android {
         applicationId = "com.propertycrm.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -27,6 +36,19 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            val keyStorePath = System.getenv("KEYSTORE_PATH") ?: keystoreProperties.getProperty("storeFile") ?: "release.keystore"
+            val storeFileObj = file(keyStorePath)
+            if (storeFileObj.exists()) {
+                storeFile = storeFileObj
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: keystoreProperties.getProperty("storePassword") ?: "PropertyCRM@2026"
+                keyAlias = System.getenv("KEY_ALIAS") ?: keystoreProperties.getProperty("keyAlias") ?: "propertycrm"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: keystoreProperties.getProperty("keyPassword") ?: "PropertyCRM@2026"
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -34,6 +56,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile?.exists() == true) {
+                signingConfig = releaseSigning
+            }
         }
         debug {
             applicationIdSuffix = ""
@@ -50,7 +76,8 @@ android {
         jvmTarget = "17"
         freeCompilerArgs += listOf(
             "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi"
+            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+            "-opt-in=androidx.compose.foundation.layout.ExperimentalLayoutApi"
         )
     }
 

@@ -5,12 +5,13 @@
     <string name="follow_ups">Follow-ups</string>
     <string name="settings">Settings</string>
 
-    <!-- Dashboard -->
+    <!-- Dashboard Metrics (Item 7) -->
     <string name="active_customers">Active Customers</string>
     <string name="today_pending">Today Due</string>
     <string name="overdue">Overdue</string>
     <string name="upcoming">Upcoming</string>
     <string name="completed">Completed</string>
+    <string name="upcoming_visits">Upcoming Visits</string>
     <string name="quick_actions">Quick Actions</string>
     <string name="add_customer">Add Customer</string>
     <string name="todays_followups">Today\'s Follow-ups</string>
@@ -23,8 +24,13 @@
     <string name="customer_phone">Phone Number *</string>
     <string name="inquiry_reason">Inquiry Reason *</string>
     <string name="property_type">Property Type</string>
+    <string name="requirement_type">Requirement</string>
     <string name="preferred_location">Preferred Location</string>
-    <string name="budget">Budget</string>
+    <string name="preferred_size">Preferred Size (e.g. 1500 sq.ft, 3 BHK)</string>
+    <string name="preferred_contact_time">Preferred Contact Time (e.g. 6-8 PM)</string>
+    <string name="next_action">Next Action</string>
+    <string name="assigned_person">Assigned To (Agent)</string>
+    <string name="budget">Budget (INR ₹)</string>
     <string name="lead_source">Lead Source</string>
     <string name="first_visit_date">First Visit Date</string>
     <string name="initial_followup_date">Initial Follow-up Date</string>
@@ -38,6 +44,12 @@
     <string name="unarchive">Unarchive</string>
     <string name="duplicate_phone_warning">Warning: A customer with this phone number already exists!</string>
     <string name="error_required_fields">Please fill all required fields (Name, Phone, Inquiry Reason).</string>
+
+    <!-- Do Not Call (DNC) -->
+    <string name="do_not_call">Do Not Call (DNC)</string>
+    <string name="dnc_active_warning">This customer is marked as Do Not Call. Normal calls and reminders are suspended.</string>
+    <string name="dnc_call_prompt">Customer is on Do Not Call list. Do you still wish to dial?</string>
+    <string name="reactivate_calls">Reactivate Calling</string>
 
     <!-- Property Types -->
     <string name="property_plot">Plot</string>
@@ -54,6 +66,40 @@
     <string name="stage_negotiation">Negotiation</string>
     <string name="stage_won">Won</string>
     <string name="stage_lost">Lost</string>
+
+    <!-- Requirement Types -->
+    <string name="req_buy">Buy</string>
+    <string name="req_sell">Sell</string>
+    <string name="req_rent">Rent</string>
+
+    <!-- Next Actions -->
+    <string name="act_call">Call</string>
+    <string name="act_site_visit">Site Visit</string>
+    <string name="act_negotiation">Negotiation</string>
+    <string name="act_other">Other</string>
+
+    <!-- Call Outcomes (Item 2) -->
+    <string name="record_call_outcome">Record Call Outcome</string>
+    <string name="outcome_answered">Answered</string>
+    <string name="outcome_no_answer">No Answer</string>
+    <string name="outcome_busy">Busy</string>
+    <string name="outcome_requested_callback">Requested Callback</string>
+    <string name="outcome_interested">Interested</string>
+    <string name="outcome_not_interested">Not Interested</string>
+    <string name="outcome_site_visit_requested">Site Visit Requested</string>
+    <string name="outcome_negotiation">Negotiation</string>
+    <string name="outcome_wrong_number">Wrong Number</string>
+
+    <!-- Site Visits / Appointments (Item 1) -->
+    <string name="site_visits">Site Visits</string>
+    <string name="schedule_visit">Schedule Site Visit</string>
+    <string name="visit_location">Property / Site Location</string>
+    <string name="visit_date">Visit Date</string>
+    <string name="visit_time">Visit Time</string>
+    <string name="appointment_scheduled">Scheduled</string>
+    <string name="appointment_completed">Completed</string>
+    <string name="appointment_cancelled">Cancelled</string>
+    <string name="appointment_rescheduled">Rescheduled</string>
 
     <!-- Follow-up Filters & Status -->
     <string name="filter_today">Today</string>
@@ -78,11 +124,12 @@
 
     <!-- Details -->
     <string name="customer_details">Customer Details</string>
+    <string name="interaction_timeline">Interaction History Timeline</string>
     <string name="followup_history">Follow-up History</string>
     <string name="no_followup_history">No follow-up records found.</string>
     <string name="confirm_delete_customer">Are you sure you want to delete this customer and all their follow-ups?</string>
 
-    <!-- Settings -->
+    <!-- Settings & Security -->
     <string name="notifications_reminders">Notifications &amp; Reminders</string>
     <string name="enable_daily_reminders">Enable Daily Reminders</string>
     <string name="reminder_time">Daily Reminder Time</string>
@@ -94,8 +141,10 @@
     <string name="test_notification">Test Notification Now</string>
     <string name="data_backup_export">Data Backup &amp; Restore</string>
     <string name="export_csv">Export Customers to CSV</string>
-    <string name="export_json">Backup Complete Data (JSON)</string>
-    <string name="import_json">Restore Data from JSON</string>
+    <string name="export_json">Export Encrypted Backup (AES-256)</string>
+    <string name="import_json">Restore Encrypted Backup</string>
+    <string name="battery_troubleshooting">Xiaomi / MIUI / Battery Optimization Guide</string>
+    <string name="app_security_lock">Application PIN Lock</string>
     <string name="about_app">About Property CRM</string>
     <string name="about_app_desc">100% Offline-First CRM for property dealers, brokers, and real-estate consultants. Never miss a customer follow-up.</string>
 
@@ -103,8 +152,5 @@
     <string name="notification_channel_name">Property Follow-up Reminders</string>
     <string name="notification_channel_desc">Daily alerts for scheduled customer calls and overdue follow-ups.</string>
     <string name="notification_title">Property Follow-up Reminder</string>
-    <string name="notification_body_format">%1$d customer(s) need follow-up today. %2$d additional customer(s) are overdue.</string>
-    <string name="notification_body_today_only">%1$d customer(s) need follow-up today.</string>
-    <string name="notification_body_overdue_only">%1$d customer(s) are overdue for follow-up.</string>
     <string name="notification_action_open">Open Follow-ups</string>
 </resources>

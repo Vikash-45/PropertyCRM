@@ -8,7 +8,6 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import com.propertycrm.app.data.model.FollowUp
-import com.propertycrm.app.data.model.FollowUpStatus
 import com.propertycrm.app.data.model.FollowUpWithCustomer
 import kotlinx.coroutines.flow.Flow
 
@@ -27,12 +26,13 @@ interface FollowUpDao {
     @Query("SELECT * FROM follow_ups ORDER BY id ASC")
     suspend fun getAllFollowUpsList(): List<FollowUp>
 
-    // FollowUpWithCustomer queries for the 5 filter tabs
+    // FollowUpWithCustomer queries with strict DNC / WON / LOST / ARCHIVED exclusion for active calls
     @Transaction
     @Query("""
         SELECT f.* FROM follow_ups f
         INNER JOIN customers c ON f.customer_id = c.id
-        WHERE c.is_archived = 0 AND f.status = 'PENDING' 
+        WHERE c.is_archived = 0 AND c.is_do_not_call = 0 AND c.stage NOT IN ('WON', 'LOST')
+          AND f.status = 'PENDING' 
           AND f.follow_up_date >= :startOfDay AND f.follow_up_date <= :endOfDay
         ORDER BY f.follow_up_date ASC, f.id ASC
     """)
@@ -42,7 +42,8 @@ interface FollowUpDao {
     @Query("""
         SELECT f.* FROM follow_ups f
         INNER JOIN customers c ON f.customer_id = c.id
-        WHERE c.is_archived = 0 AND f.status = 'PENDING' 
+        WHERE c.is_archived = 0 AND c.is_do_not_call = 0 AND c.stage NOT IN ('WON', 'LOST')
+          AND f.status = 'PENDING' 
           AND f.follow_up_date < :startOfDay
         ORDER BY f.follow_up_date ASC, f.id ASC
     """)
@@ -52,7 +53,8 @@ interface FollowUpDao {
     @Query("""
         SELECT f.* FROM follow_ups f
         INNER JOIN customers c ON f.customer_id = c.id
-        WHERE c.is_archived = 0 AND f.status = 'PENDING' 
+        WHERE c.is_archived = 0 AND c.is_do_not_call = 0 AND c.stage NOT IN ('WON', 'LOST')
+          AND f.status = 'PENDING' 
           AND f.follow_up_date > :endOfDay
         ORDER BY f.follow_up_date ASC, f.id ASC
     """)
@@ -71,58 +73,101 @@ interface FollowUpDao {
     @Query("""
         SELECT f.* FROM follow_ups f
         INNER JOIN customers c ON f.customer_id = c.id
-        WHERE c.is_archived = 0
         ORDER BY f.follow_up_date DESC, f.id DESC
     """)
     fun getAllFollowUps(): Flow<List<FollowUpWithCustomer>>
 
-    // Counts for Dashboard
+    // DISTINCT COUNTS for Dashboard (Item 7)
+    // 1. Unique customers due today
     @Query("""
-        SELECT COUNT(*) FROM follow_ups f
+        SELECT COUNT(DISTINCT c.id) FROM follow_ups f
         INNER JOIN customers c ON f.customer_id = c.id
-        WHERE c.is_archived = 0 AND f.status = 'PENDING' 
+        WHERE c.is_archived = 0 AND c.is_do_not_call = 0 AND c.stage NOT IN ('WON', 'LOST')
+          AND f.status = 'PENDING' 
           AND f.follow_up_date >= :startOfDay AND f.follow_up_date <= :endOfDay
     """)
-    fun countTodayPendingFlow(startOfDay: Long, endOfDay: Long): Flow<Int>
+    fun countTodayUniqueCustomersFlow(startOfDay: Long, endOfDay: Long): Flow<Int>
 
+    // 2. Total follow-up tasks due today
     @Query("""
-        SELECT COUNT(*) FROM follow_ups f
+        SELECT COUNT(f.id) FROM follow_ups f
         INNER JOIN customers c ON f.customer_id = c.id
-        WHERE c.is_archived = 0 AND f.status = 'PENDING' 
+        WHERE c.is_archived = 0 AND c.is_do_not_call = 0 AND c.stage NOT IN ('WON', 'LOST')
+          AND f.status = 'PENDING' 
           AND f.follow_up_date >= :startOfDay AND f.follow_up_date <= :endOfDay
     """)
-    suspend fun countTodayPendingSync(startOfDay: Long, endOfDay: Long): Int
+    fun countTodayTotalTasksFlow(startOfDay: Long, endOfDay: Long): Flow<Int>
 
+    // 3. Unique overdue customers
     @Query("""
-        SELECT COUNT(*) FROM follow_ups f
+        SELECT COUNT(DISTINCT c.id) FROM follow_ups f
         INNER JOIN customers c ON f.customer_id = c.id
-        WHERE c.is_archived = 0 AND f.status = 'PENDING' 
+        WHERE c.is_archived = 0 AND c.is_do_not_call = 0 AND c.stage NOT IN ('WON', 'LOST')
+          AND f.status = 'PENDING' 
           AND f.follow_up_date < :startOfDay
     """)
-    fun countOverdueFlow(startOfDay: Long): Flow<Int>
+    fun countOverdueUniqueCustomersFlow(startOfDay: Long): Flow<Int>
 
+    // 4. Total overdue tasks
     @Query("""
-        SELECT COUNT(*) FROM follow_ups f
+        SELECT COUNT(f.id) FROM follow_ups f
         INNER JOIN customers c ON f.customer_id = c.id
-        WHERE c.is_archived = 0 AND f.status = 'PENDING' 
+        WHERE c.is_archived = 0 AND c.is_do_not_call = 0 AND c.stage NOT IN ('WON', 'LOST')
+          AND f.status = 'PENDING' 
           AND f.follow_up_date < :startOfDay
     """)
-    suspend fun countOverdueSync(startOfDay: Long): Int
+    fun countOverdueTotalTasksFlow(startOfDay: Long): Flow<Int>
+
+    // 5. Total completed follow-up tasks
+    @Query("SELECT COUNT(*) FROM follow_ups WHERE status = 'COMPLETED'")
+    fun countCompletedTasksFlow(): Flow<Int>
+
+    // Synchronous counts for daily notification evaluation
+    @Query("""
+        SELECT COUNT(DISTINCT c.id) FROM follow_ups f
+        INNER JOIN customers c ON f.customer_id = c.id
+        WHERE c.is_archived = 0 AND c.is_do_not_call = 0 AND c.stage NOT IN ('WON', 'LOST')
+          AND f.status = 'PENDING' 
+          AND f.follow_up_date >= :startOfDay AND f.follow_up_date <= :endOfDay
+    """)
+    suspend fun countTodayUniqueCustomersSync(startOfDay: Long, endOfDay: Long): Int
 
     @Query("""
-        SELECT COUNT(*) FROM follow_ups f
+        SELECT COUNT(f.id) FROM follow_ups f
         INNER JOIN customers c ON f.customer_id = c.id
-        WHERE c.is_archived = 0 AND f.status = 'PENDING' 
+        WHERE c.is_archived = 0 AND c.is_do_not_call = 0 AND c.stage NOT IN ('WON', 'LOST')
+          AND f.status = 'PENDING' 
+          AND f.follow_up_date >= :startOfDay AND f.follow_up_date <= :endOfDay
+    """)
+    suspend fun countTodayTotalTasksSync(startOfDay: Long, endOfDay: Long): Int
+
+    @Query("""
+        SELECT COUNT(DISTINCT c.id) FROM follow_ups f
+        INNER JOIN customers c ON f.customer_id = c.id
+        WHERE c.is_archived = 0 AND c.is_do_not_call = 0 AND c.stage NOT IN ('WON', 'LOST')
+          AND f.status = 'PENDING' 
+          AND f.follow_up_date < :startOfDay
+    """)
+    suspend fun countOverdueUniqueCustomersSync(startOfDay: Long): Int
+
+    @Query("""
+        SELECT COUNT(f.id) FROM follow_ups f
+        INNER JOIN customers c ON f.customer_id = c.id
+        WHERE c.is_archived = 0 AND c.is_do_not_call = 0 AND c.stage NOT IN ('WON', 'LOST')
+          AND f.status = 'PENDING' 
+          AND f.follow_up_date < :startOfDay
+    """)
+    suspend fun countOverdueTotalTasksSync(startOfDay: Long): Int
+
+    // Upcoming tasks count
+    @Query("""
+        SELECT COUNT(f.id) FROM follow_ups f
+        INNER JOIN customers c ON f.customer_id = c.id
+        WHERE c.is_archived = 0 AND c.is_do_not_call = 0 AND c.stage NOT IN ('WON', 'LOST')
+          AND f.status = 'PENDING' 
           AND f.follow_up_date > :endOfDay
     """)
-    fun countUpcomingFlow(endOfDay: Long): Flow<Int>
-
-    @Query("""
-        SELECT COUNT(*) FROM follow_ups f
-        INNER JOIN customers c ON f.customer_id = c.id
-        WHERE f.status = 'COMPLETED'
-    """)
-    fun countCompletedFlow(): Flow<Int>
+    fun countUpcomingTasksFlow(endOfDay: Long): Flow<Int>
 
     // Mutations
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -146,6 +191,13 @@ interface FollowUpDao {
         WHERE id = :id
     """)
     suspend fun markCompleted(id: Long, completionNotes: String = "", completedAt: Long = System.currentTimeMillis())
+
+    @Query("""
+        UPDATE follow_ups 
+        SET status = 'CANCELLED', notes = CASE WHEN :cancellationNotes != '' THEN :cancellationNotes ELSE notes END 
+        WHERE id = :id
+    """)
+    suspend fun markCancelled(id: Long, cancellationNotes: String = "")
 
     @Query("""
         UPDATE follow_ups 

@@ -25,12 +25,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PhoneDisabled
+import androidx.compose.material.icons.filled.PhoneForwarded
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
@@ -49,6 +54,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -70,9 +79,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.propertycrm.app.R
+import com.propertycrm.app.data.model.AppointmentStatus
+import com.propertycrm.app.data.model.CallOutcome
+import com.propertycrm.app.data.model.CustomerInteraction
 import com.propertycrm.app.data.model.CustomerStage
 import com.propertycrm.app.data.model.FollowUp
 import com.propertycrm.app.data.model.FollowUpStatus
+import com.propertycrm.app.data.model.InteractionType
+import com.propertycrm.app.data.model.SiteVisit
+import com.propertycrm.app.ui.components.CallOutcomeDialog
+import com.propertycrm.app.ui.components.DoNotCallBadge
 import com.propertycrm.app.ui.components.EmptyStateCard
 import com.propertycrm.app.ui.components.MarkCompletedDialog
 import com.propertycrm.app.ui.components.RescheduleDialog
@@ -86,6 +102,7 @@ import com.propertycrm.app.ui.theme.PrimaryBlue
 import com.propertycrm.app.ui.theme.StatusCompleted
 import com.propertycrm.app.ui.theme.StatusCompletedBg
 import com.propertycrm.app.ui.theme.StatusOverdue
+import com.propertycrm.app.ui.theme.StatusOverdueBg
 import com.propertycrm.app.ui.theme.StatusToday
 import com.propertycrm.app.ui.theme.StatusTodayBg
 import com.propertycrm.app.ui.theme.StatusUpcoming
@@ -105,11 +122,17 @@ fun CustomerDetailScreen(
     onNavigateToEditCustomer: (Long) -> Unit
 ) {
     val data by viewModel.customerData.collectAsState()
+    val interactions by viewModel.interactions.collectAsState()
+    val siteVisits by viewModel.siteVisits.collectAsState()
     val context = LocalContext.current
 
+    var selectedTab by remember { mutableStateOf(0) } // 0: Timeline, 1: Follow-ups, 2: Site Visits
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showDncConfirm by remember { mutableStateOf(false) }
+    var showCallOutcomeDialog by remember { mutableStateOf(false) }
     var showAddFollowUpDialog by remember { mutableStateOf(false) }
+    var showScheduleVisitDialog by remember { mutableStateOf(false) }
     var activeRescheduleFollowUp by remember { mutableStateOf<FollowUp?>(null) }
     var activeCompleteFollowUp by remember { mutableStateOf<FollowUp?>(null) }
 
@@ -136,8 +159,19 @@ fun CustomerDetailScreen(
                 },
                 actions = {
                     if (customer != null) {
-                        IconButton(onClick = { PhoneUtils.dialCustomer(context, customer.phone) }) {
-                            Icon(imageVector = Icons.Default.Call, contentDescription = "Call", tint = PrimaryBlue)
+                        IconButton(onClick = {
+                            if (customer.isDoNotCall) {
+                                showDncConfirm = true
+                            } else {
+                                PhoneUtils.dialCustomer(context, customer.phone)
+                                showCallOutcomeDialog = true
+                            }
+                        }) {
+                            Icon(
+                                imageVector = if (customer.isDoNotCall) Icons.Default.PhoneDisabled else Icons.Default.Call,
+                                contentDescription = "Call",
+                                tint = if (customer.isDoNotCall) StatusOverdue else PrimaryBlue
+                            )
                         }
                         IconButton(onClick = { onNavigateToEditCustomer(customer.id) }) {
                             Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = TextPrimary)
@@ -151,7 +185,21 @@ fun CustomerDetailScreen(
                             modifier = Modifier.background(DarkSurface)
                         ) {
                             DropdownMenuItem(
-                                text = { Text(if (customer.isArchived) "Unarchive" else "Archive", color = TextPrimary) },
+                                text = { Text(if (customer.isDoNotCall) "Remove DNC (Enable Calls)" else "Mark Do Not Call (DNC)", color = TextPrimary) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = if (customer.isDoNotCall) Icons.Default.Call else Icons.Default.PhoneDisabled,
+                                        contentDescription = null,
+                                        tint = if (customer.isDoNotCall) StatusCompleted else StatusOverdue
+                                    )
+                                },
+                                onClick = {
+                                    viewModel.toggleDoNotCall()
+                                    showMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(if (customer.isArchived) "Unarchive Customer" else "Archive Customer", color = TextPrimary) },
                                 leadingIcon = {
                                     Icon(
                                         imageVector = if (customer.isArchived) Icons.Default.Unarchive else Icons.Default.Archive,
@@ -190,8 +238,8 @@ fun CustomerDetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Customer Profile Card
                 item {
@@ -220,67 +268,99 @@ fun CustomerDetailScreen(
                                         color = PrimaryBlue
                                     )
                                 }
-                                StageChip(stage = customer.stage)
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    if (customer.isDoNotCall) DoNotCallBadge()
+                                    StageChip(stage = customer.stage)
+                                }
                             }
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            // Property Details
+                            // Property & Deal Details
+                            DetailRow("Requirement", "${customer.requirementType.getDisplayName()} ${customer.propertyType.getDisplayName()}")
                             DetailRow("Inquiry Need", customer.inquiryReason)
-                            DetailRow("Property Type", customer.propertyType.getDisplayName())
-                            if (customer.preferredLocation.isNotBlank()) {
-                                DetailRow("Location", customer.preferredLocation)
-                            }
-                            if (!customer.budget.isNullOrBlank()) {
-                                DetailRow("Budget", customer.budget)
-                            }
-                            if (!customer.leadSource.isNullOrBlank()) {
-                                DetailRow("Lead Source", customer.leadSource)
-                            }
-                            if (customer.firstVisitDate != null) {
-                                DetailRow("First Visit", DateUtils.formatDate(customer.firstVisitDate))
-                            }
-                            if (customer.notes.isNotBlank()) {
-                                DetailRow("Notes", customer.notes)
-                            }
-                            DetailRow("Created On", DateUtils.formatDate(customer.createdAt))
+                            if (customer.preferredLocation.isNotBlank()) DetailRow("Location", customer.preferredLocation)
+                            if (!customer.preferredSize.isNullOrBlank()) DetailRow("Size", customer.preferredSize)
+                            if (!customer.budget.isNullOrBlank()) DetailRow("Budget", "₹${customer.budget}")
+                            if (!customer.preferredContactTime.isNullOrBlank()) DetailRow("Contact Time", customer.preferredContactTime)
+                            DetailRow("Next Action", customer.nextAction.getDisplayName())
+                            if (!customer.assignedPerson.isNullOrBlank()) DetailRow("Assigned Agent", customer.assignedPerson)
+                            if (!customer.leadSource.isNullOrBlank()) DetailRow("Lead Source", customer.leadSource)
+                            if (customer.firstVisitDate != null) DetailRow("First Visit", DateUtils.formatDate(customer.firstVisitDate))
+                            if (customer.notes.isNotBlank()) DetailRow("Notes", customer.notes)
+                            DetailRow("Registered", DateUtils.formatDate(customer.createdAt))
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            // Quick Call button
-                            Button(
-                                onClick = { PhoneUtils.dialCustomer(context, customer.phone) },
+                            // Quick Action Buttons
+                            Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                                shape = RoundedCornerShape(10.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(imageVector = Icons.Default.Call, contentDescription = null, tint = Color.Black)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Call Customer Now", color = Color.Black, fontWeight = FontWeight.Bold)
+                                Button(
+                                    onClick = {
+                                        if (customer.isDoNotCall) showDncConfirm = true
+                                        else {
+                                            PhoneUtils.dialCustomer(context, customer.phone)
+                                            showCallOutcomeDialog = true
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (customer.isDoNotCall) StatusOverdue else PrimaryBlue
+                                    ),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.Call, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(if (customer.isDoNotCall) "DNC" else "Call", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                }
+
+                                Button(
+                                    onClick = { showCallOutcomeDialog = true },
+                                    modifier = Modifier.weight(1.2f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = StatusCompleted),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.AssignmentTurnedIn, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Log Call", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                }
+
+                                Button(
+                                    onClick = { showScheduleVisitDialog = true },
+                                    modifier = Modifier.weight(1.2f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.EventAvailable, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("+ Visit", color = PrimaryBlue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                }
                             }
                         }
                     }
                 }
 
-                // Stage Changer Section
+                // Stage Selector Chips
                 item {
                     Text(
-                        text = "Change Customer Stage",
+                        text = "Update Customer Stage",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         CustomerStage.values().forEach { stg ->
                             val isSelected = customer.stage == stg
                             FilterChip(
                                 selected = isSelected,
                                 onClick = { viewModel.updateStage(stg) },
-                                label = { Text(stg.getDisplayName()) },
+                                label = { Text(stg.getDisplayName(), fontSize = 12.sp) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = when (stg) {
                                         CustomerStage.WON -> StatusCompleted
@@ -296,55 +376,188 @@ fun CustomerDetailScreen(
                     }
                 }
 
-                // Follow-up History Section
+                // Tabs: Timeline / Follow-ups / Site Visits
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    TabRow(
+                        selectedTabIndex = selectedTab,
+                        containerColor = DarkBackground,
+                        contentColor = PrimaryBlue,
+                        indicator = { tabPositions ->
+                            TabRowDefaults.Indicator(
+                                Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                                color = PrimaryBlue
+                            )
+                        }
                     ) {
-                        Text(
-                            text = stringResource(R.string.followup_history),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                        Tab(
+                            selected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            text = { Text("Timeline (${interactions.size})", fontWeight = FontWeight.SemiBold, fontSize = 13.sp) }
                         )
-                        Button(
-                            onClick = { showAddFollowUpDialog = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "Add Follow-up", color = PrimaryBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Tab(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            text = { Text("Follow-ups (${followUps.size})", fontWeight = FontWeight.SemiBold, fontSize = 13.sp) }
+                        )
+                        Tab(
+                            selected = selectedTab == 2,
+                            onClick = { selectedTab = 2 },
+                            text = { Text("Site Visits (${siteVisits.size})", fontWeight = FontWeight.SemiBold, fontSize = 13.sp) }
+                        )
+                    }
+                }
+
+                // Tab Content
+                when (selectedTab) {
+                    0 -> {
+                        // Chronological Interaction Timeline (Item 3)
+                        if (interactions.isEmpty()) {
+                            item {
+                                EmptyStateCard(
+                                    title = "No Interaction History",
+                                    message = "Calls, notes, site visits, and stage updates will appear here chronologically.",
+                                    icon = Icons.Default.History
+                                )
+                            }
+                        } else {
+                            items(interactions) { interaction ->
+                                InteractionItemCard(interaction = interaction)
+                            }
+                        }
+                    }
+                    1 -> {
+                        // Follow-up Records
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                Button(
+                                    onClick = { showAddFollowUpDialog = true },
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("+ New Follow-up", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                        if (followUps.isEmpty()) {
+                            item {
+                                EmptyStateCard(
+                                    title = stringResource(R.string.no_followup_history),
+                                    message = "No follow-up calls scheduled.",
+                                    actionLabel = "Add Follow-up",
+                                    onActionClick = { showAddFollowUpDialog = true }
+                                )
+                            }
+                        } else {
+                            items(followUps) { fu ->
+                                FollowUpTimelineCard(
+                                    followUp = fu,
+                                    onComplete = { activeCompleteFollowUp = fu },
+                                    onReschedule = { activeRescheduleFollowUp = fu }
+                                )
+                            }
+                        }
+                    }
+                    2 -> {
+                        // Site Visits (Item 1)
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                Button(
+                                    onClick = { showScheduleVisitDialog = true },
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("+ Schedule Visit", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                        if (siteVisits.isEmpty()) {
+                            item {
+                                EmptyStateCard(
+                                    title = "No Site Visits Scheduled",
+                                    message = "Record appointments for property inspections and site visits here.",
+                                    icon = Icons.Default.EventAvailable,
+                                    actionLabel = "Schedule Visit",
+                                    onActionClick = { showScheduleVisitDialog = true }
+                                )
+                            }
+                        } else {
+                            items(siteVisits) { visit ->
+                                SiteVisitCard(
+                                    visit = visit,
+                                    onStatusChange = { newStatus -> viewModel.updateSiteVisitStatus(visit.id, newStatus) }
+                                )
+                            }
                         }
                     }
                 }
 
-                if (followUps.isEmpty()) {
-                    item {
-                        EmptyStateCard(
-                            title = stringResource(R.string.no_followup_history),
-                            message = "No follow-ups recorded yet. Schedule the first follow-up call with this customer.",
-                            actionLabel = "Add Follow-up",
-                            onActionClick = { showAddFollowUpDialog = true }
-                        )
-                    }
-                } else {
-                    items(followUps) { fu ->
-                        FollowUpTimelineCard(
-                            followUp = fu,
-                            onComplete = { activeCompleteFollowUp = fu },
-                            onReschedule = { activeRescheduleFollowUp = fu }
-                        )
-                    }
-                }
-
                 item {
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(48.dp))
                 }
             }
         }
+    }
+
+    // Call Outcome Dialog
+    if (showCallOutcomeDialog) {
+        CallOutcomeDialog(
+            customerName = customer?.name ?: "Customer",
+            onDismiss = { showCallOutcomeDialog = false },
+            onConfirm = { outcome, notes, nextDate, nextTime ->
+                viewModel.recordCallOutcome(outcome, notes, nextDate, nextTime)
+                showCallOutcomeDialog = false
+            }
+        )
+    }
+
+    // Schedule Site Visit Dialog
+    if (showScheduleVisitDialog) {
+        ScheduleSiteVisitDialog(
+            defaultLocation = customer?.preferredLocation ?: "",
+            onDismiss = { showScheduleVisitDialog = false },
+            onConfirm = { loc, date, time, notes ->
+                viewModel.scheduleSiteVisit(loc, date, time, notes)
+                showScheduleVisitDialog = false
+            }
+        )
+    }
+
+    // DNC Confirmation Override
+    if (showDncConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDncConfirm = false },
+            title = { Text("Customer on Do Not Call list", color = StatusOverdue) },
+            text = { Text(stringResource(R.string.dnc_call_prompt), color = TextSecondary) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        PhoneUtils.dialCustomer(context, customer!!.phone)
+                        showDncConfirm = false
+                        showCallOutcomeDialog = true
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = StatusOverdue)
+                ) {
+                    Text("Call Anyway", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDncConfirm = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            },
+            containerColor = DarkSurface,
+            shape = RoundedCornerShape(16.dp)
+        )
     }
 
     // Delete Confirmation Dialog
@@ -411,23 +624,85 @@ fun CustomerDetailScreen(
 }
 
 @Composable
-fun DetailRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+fun InteractionItemCard(interaction: CustomerInteraction) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        shape = RoundedCornerShape(12.dp),
+        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
     ) {
-        Text(text = label, color = TextSecondary, fontSize = 13.sp)
-        Text(text = value, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(
+                        when (interaction.type) {
+                            InteractionType.CALL -> PrimaryBlue.copy(alpha = 0.2f)
+                            InteractionType.SITE_VISIT -> StatusUpcoming.copy(alpha = 0.2f)
+                            InteractionType.DO_NOT_CALL_TOGGLED -> StatusOverdue.copy(alpha = 0.2f)
+                            else -> DarkSurfaceVariant
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = when (interaction.type) {
+                        InteractionType.CALL -> Icons.Default.Call
+                        InteractionType.SITE_VISIT -> Icons.Default.EventAvailable
+                        InteractionType.DO_NOT_CALL_TOGGLED -> Icons.Default.PhoneDisabled
+                        else -> Icons.Default.History
+                    },
+                    contentDescription = null,
+                    tint = when (interaction.type) {
+                        InteractionType.CALL -> PrimaryBlue
+                        InteractionType.SITE_VISIT -> StatusUpcoming
+                        InteractionType.DO_NOT_CALL_TOGGLED -> StatusOverdue
+                        else -> TextSecondary
+                    },
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = interaction.type.getDisplayName() + if (interaction.callOutcome != null) " (${interaction.callOutcome.getDisplayName()})" else "",
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        fontSize = 13.sp
+                    )
+                    Text(
+                        text = DateUtils.formatDate(interaction.timestamp),
+                        color = TextSecondary,
+                        fontSize = 11.sp
+                    )
+                }
+
+                if (interaction.notes.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = interaction.notes, color = TextSecondary, fontSize = 12.sp)
+                }
+            }
+        }
     }
 }
 
 @Composable
-fun FollowUpTimelineCard(
-    followUp: FollowUp,
-    onComplete: () -> Unit,
-    onReschedule: () -> Unit
+fun SiteVisitCard(
+    visit: SiteVisit,
+    onStatusChange: (AppointmentStatus) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -441,59 +716,76 @@ fun FollowUpTimelineCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.CalendarToday, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = DateUtils.formatDate(followUp.followUpDate),
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
-                    if (!followUp.followUpTime.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "•  ${followUp.followUpTime}", color = TextSecondary, fontSize = 12.sp)
-                    }
-                }
-                StatusBadge(status = followUp.status, dateMillis = followUp.followUpDate)
-            }
-
-            if (followUp.notes.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = followUp.notes, color = TextSecondary, fontSize = 13.sp)
-            }
-
-            if (followUp.completedAt != null && followUp.status == FollowUpStatus.COMPLETED) {
-                Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Completed on: ${DateUtils.formatDate(followUp.completedAt)}",
-                    color = StatusCompleted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium
+                    text = visit.propertyLocation,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
                 )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(
+                            when (visit.status) {
+                                AppointmentStatus.COMPLETED -> StatusCompletedBg
+                                AppointmentStatus.CANCELLED -> StatusOverdueBg
+                                AppointmentStatus.RESCHEDULED -> DarkSurfaceVariant
+                                AppointmentStatus.SCHEDULED -> StatusUpcomingBg
+                            }
+                        )
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = visit.status.getDisplayName(),
+                        color = when (visit.status) {
+                            AppointmentStatus.COMPLETED -> StatusCompleted
+                            AppointmentStatus.CANCELLED -> StatusOverdue
+                            AppointmentStatus.RESCHEDULED -> TextMuted
+                            AppointmentStatus.SCHEDULED -> StatusUpcoming
+                        },
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
-            // Actions for Pending follow-ups
-            if (followUp.status == FollowUpStatus.PENDING) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(imageVector = Icons.Default.CalendarToday, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = "Date: ${DateUtils.formatDate(visit.visitDate)}", color = TextPrimary, fontSize = 13.sp)
+                if (!visit.visitTime.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "• ${visit.visitTime}", color = TextSecondary, fontSize = 12.sp)
+                }
+            }
+
+            if (visit.notes.isNotBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(text = visit.notes, color = TextSecondary, fontSize = 12.sp)
+            }
+
+            if (visit.status == AppointmentStatus.SCHEDULED) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedButton(
-                        onClick = onReschedule,
+                        onClick = { onStatusChange(AppointmentStatus.CANCELLED) },
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = StatusOverdue)
                     ) {
-                        Text("Reschedule", fontSize = 12.sp)
+                        Text("Cancel", fontSize = 11.sp)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
-                        onClick = onComplete,
-                        colors = ButtonDefaults.buttonColors(containerColor = StatusCompleted),
-                        shape = RoundedCornerShape(8.dp)
+                        onClick = { onStatusChange(AppointmentStatus.COMPLETED) },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = StatusCompleted)
                     ) {
-                        Text("Done", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text("Completed", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     }
                 }
             }
@@ -502,20 +794,36 @@ fun FollowUpTimelineCard(
 }
 
 @Composable
-fun AddFollowUpDialog(
+fun ScheduleSiteVisitDialog(
+    defaultLocation: String,
     onDismiss: () -> Unit,
-    onConfirm: (dateMillis: Long, time: String?, notes: String) -> Unit
+    onConfirm: (location: String, dateMillis: Long, time: String?, notes: String) -> Unit
 ) {
-    var selectedDate by remember { mutableStateOf(DateUtils.getStartOfDay()) }
-    var selectedTime by remember { mutableStateOf("11:00 AM") }
+    var location by remember { mutableStateOf(defaultLocation) }
+    var selectedDate by remember { mutableStateOf(DateUtils.getStartOfDay() + 86400000L) }
+    var selectedTime by remember { mutableStateOf("04:00 PM") }
     var notes by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Schedule Follow-up", color = TextPrimary) },
+        title = { Text("Schedule Site Visit", color = TextPrimary) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = location,
+                    onValueChange = { location = it },
+                    label = { Text("Property / Site Location *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = PrimaryBlue,
+                        unfocusedBorderColor = DarkBorder
+                    ),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = { showDatePicker = true },
                     modifier = Modifier.fillMaxWidth(),
@@ -532,23 +840,38 @@ fun AddFollowUpDialog(
                     onValueChange = { selectedTime = it },
                     label = { Text("Time") },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = getDarkTextFieldColors(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = PrimaryBlue,
+                        unfocusedBorderColor = DarkBorder
+                    ),
                     singleLine = true
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = notes,
                     onValueChange = { notes = it },
-                    label = { Text("Notes") },
-                    placeholder = { Text("e.g. Discuss revised quote, site visit arrangement") },
+                    label = { Text("Visit Notes (Optional)") },
+                    placeholder = { Text("e.g. Show 3BHK flat layout, meeting at site gate") },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = getDarkTextFieldColors()
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = PrimaryBlue,
+                        unfocusedBorderColor = DarkBorder
+                    )
                 )
             }
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(selectedDate, selectedTime.takeIf { it.isNotBlank() }, notes) },
+                onClick = {
+                    if (location.isNotBlank()) {
+                        onConfirm(location, selectedDate, selectedTime.takeIf { it.isNotBlank() }, notes)
+                    }
+                },
+                enabled = location.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
             ) {
                 Text("Schedule", color = Color.Black, fontWeight = FontWeight.Bold)
@@ -564,14 +887,12 @@ fun AddFollowUpDialog(
     )
 
     if (showDatePicker) {
-        val cal = Calendar.getInstance()
-        cal.timeInMillis = selectedDate
+        val cal = Calendar.getInstance().apply { timeInMillis = selectedDate }
         val context = LocalContext.current
         DatePickerDialog(
             context,
             { _, year, month, day ->
-                val newCal = Calendar.getInstance()
-                newCal.set(year, month, day, 0, 0, 0)
+                val newCal = Calendar.getInstance().apply { set(year, month, day, 0, 0, 0) }
                 selectedDate = newCal.timeInMillis
                 showDatePicker = false
             },

@@ -1,0 +1,15 @@
+package com.propertycrm.app.data.model
+
+import androidx.room.Embedded
+import androidx.room.Relation
+
+data class SiteVisitWithCustomer(
+    @Embedded
+    val siteVisit: SiteVisit,
+
+    @Relation(
+        parentColumn = "customer_id",
+        entityColumn = "id"
+    )
+    val customer: Customer
+)

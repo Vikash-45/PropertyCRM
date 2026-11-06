@@ -20,25 +20,29 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.NotificationImportant
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.PhoneCallback
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -57,6 +61,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.propertycrm.app.R
 import com.propertycrm.app.data.model.FollowUpWithCustomer
+import com.propertycrm.app.ui.components.CallOutcomeDialog
+import com.propertycrm.app.ui.components.DoNotCallBadge
 import com.propertycrm.app.ui.components.EmptyStateCard
 import com.propertycrm.app.ui.components.MarkCompletedDialog
 import com.propertycrm.app.ui.components.RescheduleDialog
@@ -94,6 +100,8 @@ fun DashboardScreen(
 
     var activeRescheduleItem by remember { mutableStateOf<FollowUpWithCustomer?>(null) }
     var activeCompleteItem by remember { mutableStateOf<FollowUpWithCustomer?>(null) }
+    var activeCallOutcomeItem by remember { mutableStateOf<FollowUpWithCustomer?>(null) }
+    var dncPromptItem by remember { mutableStateOf<FollowUpWithCustomer?>(null) }
 
     Scaffold(
         containerColor = DarkBackground,
@@ -124,29 +132,22 @@ fun DashboardScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                // Header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.app_name),
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                        Text(
-                            text = "Daily Overview & Customer Tasks",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
-                        )
-                    }
+                Column {
+                    Text(
+                        text = stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Real Estate Dealings & Customer Follow-up CRM",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
                 }
             }
 
-            // Stat Cards Grid
+            // Stat Cards Grid: Distinct Counts (Item 7)
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     // Top row: Today Due & Overdue
@@ -154,18 +155,24 @@ fun DashboardScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        StatCard(
+                        StatCardDetailed(
                             title = stringResource(R.string.today_pending),
-                            count = uiState.todayDueCount,
+                            mainCount = uiState.uniqueTodayCustomersCount,
+                            mainLabel = "Customers",
+                            subCount = uiState.totalTodayTasksCount,
+                            subLabel = "Calls",
                             accentColor = StatusToday,
                             bgColor = StatusTodayBg,
                             icon = Icons.Default.NotificationImportant,
                             modifier = Modifier.weight(1f),
                             onClick = { onNavigateToFollowUpsFilter("TODAY") }
                         )
-                        StatCard(
+                        StatCardDetailed(
                             title = stringResource(R.string.overdue),
-                            count = uiState.overdueCount,
+                            mainCount = uiState.uniqueOverdueCustomersCount,
+                            mainLabel = "Customers",
+                            subCount = uiState.totalOverdueTasksCount,
+                            subLabel = "Calls",
                             accentColor = StatusOverdue,
                             bgColor = StatusOverdueBg,
                             icon = Icons.Default.EventBusy,
@@ -174,14 +181,14 @@ fun DashboardScreen(
                         )
                     }
 
-                    // Bottom row: Upcoming, Completed & Active Customers
+                    // Middle row: Upcoming Tasks, Site Visits, Completed
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         StatCard(
                             title = stringResource(R.string.upcoming),
-                            count = uiState.upcomingCount,
+                            count = uiState.upcomingTasksCount,
                             accentColor = StatusUpcoming,
                             bgColor = StatusUpcomingBg,
                             icon = Icons.Default.HourglassTop,
@@ -189,22 +196,22 @@ fun DashboardScreen(
                             onClick = { onNavigateToFollowUpsFilter("UPCOMING") }
                         )
                         StatCard(
+                            title = stringResource(R.string.upcoming_visits),
+                            count = uiState.upcomingSiteVisitsCount,
+                            accentColor = PrimaryBlue,
+                            bgColor = DarkSurfaceVariant,
+                            icon = Icons.Default.EventAvailable,
+                            modifier = Modifier.weight(1f),
+                            onClick = onNavigateToCustomers
+                        )
+                        StatCard(
                             title = stringResource(R.string.completed),
-                            count = uiState.completedCount,
+                            count = uiState.completedTasksCount,
                             accentColor = StatusCompleted,
                             bgColor = StatusCompletedBg,
                             icon = Icons.Default.Verified,
                             modifier = Modifier.weight(1f),
                             onClick = { onNavigateToFollowUpsFilter("COMPLETED") }
-                        )
-                        StatCard(
-                            title = stringResource(R.string.active_customers),
-                            count = uiState.activeCustomersCount,
-                            accentColor = PrimaryBlue,
-                            bgColor = DarkSurfaceVariant,
-                            icon = Icons.Default.People,
-                            modifier = Modifier.weight(1f),
-                            onClick = onNavigateToCustomers
                         )
                     }
                 }
@@ -225,7 +232,7 @@ fun DashboardScreen(
                     )
                     if (uiState.todayFollowUps.isNotEmpty()) {
                         Text(
-                            text = "View All (${uiState.todayDueCount})",
+                            text = "View All (${uiState.totalTodayTasksCount} calls)",
                             color = PrimaryBlue,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -239,7 +246,7 @@ fun DashboardScreen(
                 item {
                     EmptyStateCard(
                         title = stringResource(R.string.no_followups_today),
-                        message = "You are all caught up for today! Add a new customer or check upcoming follow-ups.",
+                        message = "You are all caught up for today! Add a new customer or review upcoming follow-ups.",
                         icon = Icons.Default.Check,
                         actionLabel = stringResource(R.string.add_customer),
                         onActionClick = onNavigateToAddCustomer
@@ -249,7 +256,16 @@ fun DashboardScreen(
                 items(uiState.todayFollowUps) { item ->
                     DashboardFollowUpCard(
                         item = item,
-                        onCallClick = { PhoneUtils.dialCustomer(context, item.customer.phone) },
+                        onCallClick = {
+                            if (item.customer.isDoNotCall) {
+                                dncPromptItem = item
+                            } else {
+                                PhoneUtils.dialCustomer(context, item.customer.phone)
+                                // Offer to log call outcome right away
+                                activeCallOutcomeItem = item
+                            }
+                        },
+                        onRecordOutcomeClick = { activeCallOutcomeItem = item },
                         onCompleteClick = { activeCompleteItem = item },
                         onRescheduleClick = { activeRescheduleItem = item },
                         onClick = { onNavigateToCustomerDetail(item.customer.id) }
@@ -261,6 +277,46 @@ fun DashboardScreen(
                 Spacer(modifier = Modifier.height(72.dp))
             }
         }
+    }
+
+    // Do Not Call override prompt
+    dncPromptItem?.let { item ->
+        AlertDialog(
+            onDismissRequest = { dncPromptItem = null },
+            title = { Text(text = "Do Not Call Customer", color = StatusOverdue) },
+            text = { Text(stringResource(R.string.dnc_call_prompt), color = TextSecondary) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        PhoneUtils.dialCustomer(context, item.customer.phone)
+                        dncPromptItem = null
+                        activeCallOutcomeItem = item
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = StatusOverdue)
+                ) {
+                    Text("Call Anyway", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { dncPromptItem = null }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            },
+            containerColor = DarkSurface,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // Call Outcome Dialog
+    activeCallOutcomeItem?.let { item ->
+        CallOutcomeDialog(
+            customerName = item.customer.name,
+            onDismiss = { activeCallOutcomeItem = null },
+            onConfirm = { outcome, notes, nextDate, nextTime ->
+                viewModel.recordCallOutcome(item.customer.id, outcome, notes, nextDate, nextTime)
+                activeCallOutcomeItem = null
+            }
+        )
     }
 
     // Reschedule Dialog
@@ -289,9 +345,12 @@ fun DashboardScreen(
 }
 
 @Composable
-fun StatCard(
+fun StatCardDetailed(
     title: String,
-    count: Int,
+    mainCount: Int,
+    mainLabel: String,
+    subCount: Int,
+    subLabel: String,
     accentColor: Color,
     bgColor: Color,
     icon: ImageVector,
@@ -304,9 +363,7 @@ fun StatCard(
         shape = RoundedCornerShape(14.dp),
         border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp)
-        ) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -329,15 +386,68 @@ fun StatCard(
                 )
             }
             Spacer(modifier = Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    text = mainCount.toString(),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = mainLabel,
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    modifier = Modifier.padding(bottom = 3.dp)
+                )
+            }
+            Text(
+                text = "$subCount $subLabel • $title",
+                fontSize = 11.sp,
+                color = accentColor,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+fun StatCard(
+    title: String,
+    count: Int,
+    accentColor: Color,
+    bgColor: Color,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = modifier.clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        shape = RoundedCornerShape(14.dp),
+        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(bgColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(imageVector = icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(16.dp))
+            }
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = count.toString(),
-                fontSize = 24.sp,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
             )
             Text(
                 text = title,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 color = TextSecondary,
                 maxLines = 1
             )
@@ -349,6 +459,7 @@ fun StatCard(
 fun DashboardFollowUpCard(
     item: FollowUpWithCustomer,
     onCallClick: () -> Unit,
+    onRecordOutcomeClick: () -> Unit,
     onCompleteClick: () -> Unit,
     onRescheduleClick: () -> Unit,
     onClick: () -> Unit
@@ -378,18 +489,23 @@ fun DashboardFollowUpCard(
                     Text(
                         text = item.customer.phone,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
+                        color = PrimaryBlue
                     )
                 }
-                StatusBadge(status = item.followUp.status, dateMillis = item.followUp.followUpDate)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (item.customer.isDoNotCall) {
+                        DoNotCallBadge()
+                    }
+                    StatusBadge(status = item.followUp.status, dateMillis = item.followUp.followUpDate)
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Inquiry Reason & Property Type
+            // Chips: Stage & Property Type & Requirement
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 StageChip(stage = item.customer.stage)
@@ -397,13 +513,21 @@ fun DashboardFollowUpCard(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(DarkSurfaceVariant)
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                        .padding(horizontal = 7.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = item.customer.propertyType.getDisplayName(),
+                        text = "${item.customer.requirementType.getDisplayName()} ${item.customer.propertyType.getDisplayName()}",
                         color = TextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
+                    )
+                }
+                if (!item.customer.budget.isNullOrBlank()) {
+                    Text(
+                        text = "• ₹${item.customer.budget}",
+                        color = StatusCompleted,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
@@ -420,19 +544,9 @@ fun DashboardFollowUpCard(
             if (!item.followUp.followUpTime.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Schedule,
-                        contentDescription = null,
-                        tint = PrimaryBlue,
-                        modifier = Modifier.size(14.dp)
-                    )
+                    Icon(imageVector = Icons.Default.Schedule, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = item.followUp.followUpTime,
-                        fontSize = 12.sp,
-                        color = PrimaryBlue,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Text(text = item.followUp.followUpTime, fontSize = 12.sp, color = PrimaryBlue, fontWeight = FontWeight.Medium)
                 }
             }
 
@@ -443,38 +557,40 @@ fun DashboardFollowUpCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Call Button (ACTION_DIAL)
+                // Call Button
                 Button(
                     onClick = onCallClick,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (item.customer.isDoNotCall) StatusOverdue else PrimaryBlue
+                    ),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.Phone, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Call", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Icon(imageVector = Icons.Default.Phone, contentDescription = null, tint = Color.Black, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(if (item.customer.isDoNotCall) "DNC" else "Call", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
 
-                // Complete Button
+                // Outcome / Done Button
                 Button(
-                    onClick = onCompleteClick,
-                    modifier = Modifier.weight(1f),
+                    onClick = onRecordOutcomeClick,
+                    modifier = Modifier.weight(1.2f),
                     colors = ButtonDefaults.buttonColors(containerColor = StatusCompleted),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Done", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Icon(imageVector = Icons.Default.AssignmentTurnedIn, contentDescription = null, tint = Color.Black, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Outcome", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
 
                 // Reschedule Button
                 OutlinedButton(
                     onClick = onRescheduleClick,
-                    modifier = Modifier.weight(1.2f),
+                    modifier = Modifier.weight(1.1f),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
                 ) {
-                    Text("Reschedule", fontSize = 12.sp)
+                    Text("Reschedule", fontSize = 11.sp)
                 }
             }
         }

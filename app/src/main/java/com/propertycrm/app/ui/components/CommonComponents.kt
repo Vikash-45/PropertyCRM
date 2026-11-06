@@ -1,11 +1,14 @@
 package com.propertycrm.app.ui.components
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,15 +21,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.PhoneDisabled
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -44,12 +50,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.propertycrm.app.data.model.AppointmentStatus
+import com.propertycrm.app.data.model.CallOutcome
 import com.propertycrm.app.data.model.CustomerStage
 import com.propertycrm.app.data.model.FollowUpStatus
+import com.propertycrm.app.data.model.InteractionType
 import com.propertycrm.app.ui.theme.DarkBorder
 import com.propertycrm.app.ui.theme.DarkSurface
 import com.propertycrm.app.ui.theme.DarkSurfaceVariant
@@ -133,6 +144,23 @@ fun StageChip(
 }
 
 @Composable
+fun DoNotCallBadge(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(StatusOverdueBg)
+            .border(1.dp, StatusOverdue, RoundedCornerShape(6.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(imageVector = Icons.Default.PhoneDisabled, contentDescription = null, tint = StatusOverdue, modifier = Modifier.size(12.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(text = "DO NOT CALL", color = StatusOverdue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
 fun EmptyStateCard(
     title: String,
     message: String,
@@ -198,6 +226,159 @@ fun EmptyStateCard(
     }
 }
 
+// Call Outcome Dialog (Item 2)
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun CallOutcomeDialog(
+    customerName: String,
+    onDismiss: () -> Unit,
+    onConfirm: (outcome: CallOutcome, notes: String, nextFollowUpDate: Long?, nextFollowUpTime: String?) -> Unit
+) {
+    var selectedOutcome by remember { mutableStateOf(CallOutcome.ANSWERED) }
+    var notes by remember { mutableStateOf("") }
+    var scheduleNextFollowUp by remember { mutableStateOf(false) }
+    var nextDate by remember { mutableStateOf(DateUtils.getStartOfDay() + 86400000L) } // default tomorrow
+    var nextTime by remember { mutableStateOf("11:00 AM") }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Call Outcome: $customerName", color = TextPrimary) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(text = "Select Call Outcome:", color = TextSecondary, fontSize = 13.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    CallOutcome.values().forEach { outcome ->
+                        val isSelected = selectedOutcome == outcome
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { selectedOutcome = outcome },
+                            label = { Text(outcome.getDisplayName(), fontSize = 11.sp) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = PrimaryBlue,
+                                selectedLabelColor = Color.Black,
+                                containerColor = DarkSurfaceVariant,
+                                labelColor = TextSecondary
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Call Notes") },
+                    placeholder = { Text("Details of conversation...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = PrimaryBlue,
+                        unfocusedBorderColor = DarkBorder
+                    ),
+                    maxLines = 3
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(DarkSurfaceVariant)
+                        .clickable { scheduleNextFollowUp = !scheduleNextFollowUp }
+                        .padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = if (scheduleNextFollowUp) Icons.Default.Check else Icons.Default.Schedule,
+                        contentDescription = null,
+                        tint = if (scheduleNextFollowUp) StatusCompleted else TextSecondary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Schedule Next Follow-up", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                }
+
+                if (scheduleNextFollowUp) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { showDatePicker = true },
+                            modifier = Modifier.weight(1.3f),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+                        ) {
+                            Text(DateUtils.formatDate(nextDate), fontSize = 12.sp)
+                        }
+                        OutlinedTextField(
+                            value = nextTime,
+                            onValueChange = { nextTime = it },
+                            label = { Text("Time") },
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                focusedBorderColor = PrimaryBlue,
+                                unfocusedBorderColor = DarkBorder
+                            ),
+                            singleLine = true
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onConfirm(
+                        selectedOutcome,
+                        notes,
+                        if (scheduleNextFollowUp) nextDate else null,
+                        if (scheduleNextFollowUp) nextTime else null
+                    )
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+            ) {
+                Text("Record", color = Color.Black, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = TextSecondary)
+            }
+        },
+        containerColor = DarkSurface,
+        shape = RoundedCornerShape(16.dp)
+    )
+
+    if (showDatePicker) {
+        val cal = Calendar.getInstance().apply { timeInMillis = nextDate }
+        val context = LocalContext.current
+        DatePickerDialog(
+            context,
+            { _, year, month, day ->
+                val newCal = Calendar.getInstance().apply { set(year, month, day, 0, 0, 0) }
+                nextDate = newCal.timeInMillis
+                showDatePicker = false
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        ).apply {
+            setOnDismissListener { showDatePicker = false }
+            show()
+        }
+    }
+}
+
+// Reschedule Dialog
 @Composable
 fun RescheduleDialog(
     initialDateMillis: Long,
@@ -221,7 +402,6 @@ fun RescheduleDialog(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Date Picker row
                 OutlinedButton(
                     onClick = { showDatePicker = true },
                     modifier = Modifier.fillMaxWidth(),
@@ -235,7 +415,6 @@ fun RescheduleDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Optional time text field
                 OutlinedTextField(
                     value = selectedTime,
                     onValueChange = { selectedTime = it },
@@ -252,12 +431,11 @@ fun RescheduleDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Reason notes
                 OutlinedTextField(
                     value = reasonText,
                     onValueChange = { reasonText = it },
                     label = { Text("Reason for Rescheduling") },
-                    placeholder = { Text("e.g. Customer asked to call in the evening") },
+                    placeholder = { Text("e.g. Customer requested call in evening") },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = TextPrimary,
@@ -287,15 +465,12 @@ fun RescheduleDialog(
     )
 
     if (showDatePicker) {
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = selectedDateMillis
-        val context = androidx.compose.ui.platform.LocalContext.current
-
-        android.app.DatePickerDialog(
+        val calendar = Calendar.getInstance().apply { timeInMillis = selectedDateMillis }
+        val context = LocalContext.current
+        DatePickerDialog(
             context,
             { _, year, month, dayOfMonth ->
-                val newCal = Calendar.getInstance()
-                newCal.set(year, month, dayOfMonth, 0, 0, 0)
+                val newCal = Calendar.getInstance().apply { set(year, month, dayOfMonth, 0, 0, 0) }
                 selectedDateMillis = newCal.timeInMillis
                 showDatePicker = false
             },
@@ -309,6 +484,7 @@ fun RescheduleDialog(
     }
 }
 
+// Mark Completed Dialog
 @Composable
 fun MarkCompletedDialog(
     customerName: String,
@@ -333,7 +509,7 @@ fun MarkCompletedDialog(
                     value = notes,
                     onValueChange = { notes = it },
                     label = { Text("Call outcome / notes (Optional)") },
-                    placeholder = { Text("e.g. Discussed 2BHK pricing, interested in site visit") },
+                    placeholder = { Text("e.g. Discussed revised pricing") },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = TextPrimary,
@@ -351,6 +527,78 @@ fun MarkCompletedDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = StatusCompleted)
             ) {
                 Text("Mark Done", color = Color.Black, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = TextSecondary)
+            }
+        },
+        containerColor = DarkSurface,
+        shape = RoundedCornerShape(16.dp)
+    )
+}
+
+// Password Prompt Dialog for Encrypted Backup / Restore (Item 13)
+@Composable
+fun PasswordPromptDialog(
+    title: String,
+    message: String,
+    confirmLabel: String = "Proceed",
+    onDismiss: () -> Unit,
+    onConfirm: (password: String) -> Unit
+) {
+    var password by remember { mutableStateOf("") }
+    var errorText by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = PrimaryBlue)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(title, color = TextPrimary)
+            }
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(message, color = TextSecondary, fontSize = 13.sp)
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = {
+                        password = it
+                        errorText = null
+                    },
+                    label = { Text("Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = PrimaryBlue,
+                        unfocusedBorderColor = DarkBorder
+                    ),
+                    singleLine = true
+                )
+                if (errorText != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(errorText!!, color = StatusOverdue, fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (password.length < 4) {
+                        errorText = "Password must be at least 4 characters."
+                    } else {
+                        onConfirm(password)
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+            ) {
+                Text(confirmLabel, color = Color.Black, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
