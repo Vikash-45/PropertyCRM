@@ -19,8 +19,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
@@ -37,6 +39,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhoneDisabled
 import androidx.compose.material.icons.filled.PhoneForwarded
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -338,6 +341,36 @@ fun CustomerDetailScreen(
                                     Icon(imageVector = Icons.Default.EventAvailable, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("+ Visit", color = PrimaryBlue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Secondary Communication Row: WhatsApp & SMS
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = { PhoneUtils.openWhatsApp(context, customer.phone) },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.Send, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("WhatsApp", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                }
+
+                                Button(
+                                    onClick = { PhoneUtils.sendSms(context, customer.phone) },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.Edit, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Send SMS", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 }
                             }
                         }
@@ -865,7 +898,11 @@ fun ScheduleSiteVisitDialog(
         onDismissRequest = onDismiss,
         title = { Text("Schedule Site Visit", color = TextPrimary) },
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 OutlinedTextField(
                     value = location,
                     onValueChange = { location = it },

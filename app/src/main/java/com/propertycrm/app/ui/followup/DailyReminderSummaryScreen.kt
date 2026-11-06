@@ -26,6 +26,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +63,7 @@ fun DailyReminderSummaryScreen(
     val todayFollowUps by followUpRepository.getTodayFollowUps().collectAsState(initial = emptyList())
     val overdueFollowUps by followUpRepository.getOverdueFollowUps().collectAsState(initial = emptyList())
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     var activeRescheduleItem by remember { mutableStateOf<FollowUpWithCustomer?>(null) }
     var activeCompleteItem by remember { mutableStateOf<FollowUpWithCustomer?>(null) }
@@ -174,7 +176,7 @@ fun DailyReminderSummaryScreen(
             customerName = item.customer.name,
             onDismiss = { activeCallOutcomeItem = null },
             onConfirm = { outcome, notes, nextDate, nextTime ->
-                CoroutineScope(Dispatchers.IO).launch {
+                coroutineScope.launch {
                     customerRepository.recordCallOutcome(item.customer.id, outcome, notes, nextDate, nextTime)
                 }
                 activeCallOutcomeItem = null
@@ -188,7 +190,7 @@ fun DailyReminderSummaryScreen(
             initialDateMillis = item.followUp.followUpDate,
             onDismiss = { activeRescheduleItem = null },
             onConfirm = { newDate, newTime, reason ->
-                CoroutineScope(Dispatchers.IO).launch {
+                coroutineScope.launch {
                     followUpRepository.rescheduleFollowUp(item.followUp.id, newDate, newTime, reason)
                 }
                 activeRescheduleItem = null
@@ -202,7 +204,7 @@ fun DailyReminderSummaryScreen(
             customerName = item.customer.name,
             onDismiss = { activeCompleteItem = null },
             onConfirm = { notes, _ ->
-                CoroutineScope(Dispatchers.IO).launch {
+                coroutineScope.launch {
                     followUpRepository.markCompleted(item.followUp.id, notes)
                 }
                 activeCompleteItem = null

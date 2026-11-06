@@ -59,4 +59,52 @@ object PhoneUtils {
             Toast.makeText(context, "Unable to open dialer: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
+
+    /**
+     * Opens WhatsApp chat directly with customer using wa.me deep-link.
+     */
+    fun openWhatsApp(context: Context, phoneNumber: String, message: String = "") {
+        val cleanNumber = phoneNumber.replace("[^0-9+]".toRegex(), "")
+        if (cleanNumber.isBlank()) {
+            Toast.makeText(context, "No phone number available", Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            val intlNumber = if (cleanNumber.startsWith("+")) cleanNumber.substring(1) else cleanNumber
+            val url = if (message.isNotBlank()) {
+                "https://wa.me/$intlNumber?text=${Uri.encode(message)}"
+            } else {
+                "https://wa.me/$intlNumber"
+            }
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(context, "Unable to open WhatsApp: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Launches SMS client with customer phone prefilled.
+     */
+    fun sendSms(context: Context, phoneNumber: String, body: String = "") {
+        val cleanNumber = phoneNumber.trim()
+        if (cleanNumber.isBlank()) {
+            Toast.makeText(context, "No phone number available", Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                data = Uri.parse("smsto:${Uri.encode(cleanNumber)}")
+                if (body.isNotBlank()) {
+                    putExtra("sms_body", body)
+                }
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(context, "Unable to open SMS: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
 }

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
@@ -67,6 +68,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -517,13 +519,14 @@ fun SettingsScreen(
             onDismissRequest = { showSetPinDialog = false },
             title = { Text("Set Application PIN", color = TextPrimary) },
             text = {
-                Column {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     Text("Enter a 4-digit PIN to lock Property CRM:", color = TextSecondary, fontSize = 13.sp)
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
                         value = pinInput,
-                        onValueChange = { if (it.length <= 6) pinInput = it },
+                        onValueChange = { if (it.length <= 6 && it.all { ch -> ch.isDigit() }) pinInput = it },
                         label = { Text("Enter PIN") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
                         colors = getDarkTextFieldColors()
@@ -531,8 +534,9 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = confirmPinInput,
-                        onValueChange = { if (it.length <= 6) confirmPinInput = it },
+                        onValueChange = { if (it.length <= 6 && it.all { ch -> ch.isDigit() }) confirmPinInput = it },
                         label = { Text("Confirm PIN") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
                         colors = getDarkTextFieldColors()

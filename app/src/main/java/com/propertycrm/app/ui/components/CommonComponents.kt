@@ -4,6 +4,9 @@ import android.app.DatePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,6 +55,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -245,7 +249,11 @@ fun CallOutcomeDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = "Call Outcome: $customerName", color = TextPrimary) },
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Text(text = "Select Call Outcome:", color = TextSecondary, fontSize = 13.sp)
                 Spacer(modifier = Modifier.height(8.dp))
                 FlowRow(
@@ -394,7 +402,11 @@ fun RescheduleDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = "Reschedule Follow-up", color = TextPrimary) },
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Text(
                     text = "Select a new date and time for following up with the customer.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -500,7 +512,11 @@ fun AddFollowUpDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = "Add Follow-up Task", color = TextPrimary) },
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Text(
                     text = "Schedule a new follow-up call or task for this customer.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -609,7 +625,11 @@ fun MarkCompletedDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = "Complete Follow-up", color = TextPrimary) },
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Text(
                     text = "Mark follow-up with $customerName as completed.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -672,7 +692,11 @@ fun PasswordPromptDialog(
             }
         },
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Text(message, color = TextSecondary, fontSize = 13.sp)
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedTextField(
@@ -682,6 +706,7 @@ fun PasswordPromptDialog(
                         errorText = null
                     },
                     label = { Text("Password") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(

@@ -16,10 +16,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
@@ -39,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,12 +62,15 @@ import com.propertycrm.app.util.SecurityUtils
 
 class MainActivity : ComponentActivity() {
 
+    private val currentIntentState = mutableStateOf<Intent?>(null)
+
     private val requestNotificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { _ -> }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        currentIntentState.value = intent
         checkAndRequestNotificationPermission()
 
         val appContainer = application as PropertyCrmApp
@@ -85,9 +91,10 @@ class MainActivity : ComponentActivity() {
                     )
                 } else {
                     val navController = rememberNavController()
+                    val activeIntent by currentIntentState
 
-                    androidx.compose.runtime.LaunchedEffect(intent) {
-                        handleNotificationIntent(intent, navController)
+                    androidx.compose.runtime.LaunchedEffect(activeIntent) {
+                        handleNotificationIntent(activeIntent, navController)
                     }
 
                     AppNavigation(
@@ -102,6 +109,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        currentIntentState.value = intent
     }
 
     private fun handleNotificationIntent(intent: Intent?, navController: androidx.navigation.NavHostController) {
@@ -141,7 +149,8 @@ fun PinUnlockScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground),
+            .background(DarkBackground)
+            .imePadding(),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -167,12 +176,19 @@ fun PinUnlockScreen(
             OutlinedTextField(
                 value = enteredPin,
                 onValueChange = {
-                    if (it.length <= 6) {
+                    if (it.length <= 6 && it.all { ch -> ch.isDigit() }) {
                         enteredPin = it
                         errorText = null
+                        if (it.length >= 4) {
+                            val computedHash = SecurityUtils.hashPin(it, salt)
+                            if (computedHash == targetHash) {
+                                onUnlocked()
+                            }
+                        }
                     }
                 },
                 label = { Text("4-digit PIN") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(0.7f),
                 colors = getDarkTextFieldColors(),

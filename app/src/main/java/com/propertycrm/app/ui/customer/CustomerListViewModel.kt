@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 
@@ -23,11 +24,16 @@ class CustomerListViewModel(
     val showArchived: StateFlow<Boolean> = _showArchived.asStateFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val customers: StateFlow<List<Customer>> = _searchQuery.flatMapLatest { query ->
+    val customers: StateFlow<List<Customer>> = combine(
+        _searchQuery,
+        _showArchived
+    ) { query, showArchived ->
+        query to showArchived
+    }.flatMapLatest { (query, showArchived) ->
         if (query.isNotBlank()) {
             customerRepository.searchCustomers(query.trim())
         } else {
-            if (_showArchived.value) {
+            if (showArchived) {
                 customerRepository.getArchivedCustomers()
             } else {
                 customerRepository.getActiveCustomers()

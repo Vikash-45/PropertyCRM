@@ -78,7 +78,11 @@ fun AppNavigation(
                             label = { Text(text = screen.title) },
                             selected = selected,
                             onClick = {
-                                navController.navigate(screen.route) {
+                                val destinationRoute = when (screen) {
+                                    is Screen.FollowUps -> Screen.FollowUps.createRoute("ALL")
+                                    else -> screen.route
+                                }
+                                navController.navigate(destinationRoute) {
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         saveState = true
                                     }
