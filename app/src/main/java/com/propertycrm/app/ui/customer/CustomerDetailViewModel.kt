@@ -7,6 +7,7 @@ import com.propertycrm.app.data.model.CallOutcome
 import com.propertycrm.app.data.model.CustomerInteraction
 import com.propertycrm.app.data.model.CustomerStage
 import com.propertycrm.app.data.model.CustomerWithFollowUps
+import com.propertycrm.app.data.model.InteractionType
 import com.propertycrm.app.data.model.SiteVisit
 import com.propertycrm.app.data.repository.CustomerRepository
 import com.propertycrm.app.data.repository.FollowUpRepository
