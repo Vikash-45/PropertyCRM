@@ -385,7 +385,7 @@ fun CustomerDetailScreen(
                         containerColor = DarkBackground,
                         contentColor = PrimaryBlue,
                         indicator = { tabPositions ->
-                            TabRowDefaults.Indicator(
+                            TabRowDefaults.SecondaryIndicator(
                                 Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
                                 color = PrimaryBlue
                             )

@@ -132,7 +132,7 @@ fun CustomerListScreen(
                 containerColor = DarkBackground,
                 contentColor = PrimaryBlue,
                 indicator = { tabPositions ->
-                    TabRowDefaults.Indicator(
+                    TabRowDefaults.SecondaryIndicator(
                         Modifier.tabIndicatorOffset(tabPositions[if (showArchived) 1 else 0]),
                         color = PrimaryBlue
                     )
