@@ -5,12 +5,15 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.propertycrm.app.MainActivity
 import com.propertycrm.app.R
 import com.propertycrm.app.data.local.AppDatabase
+import com.propertycrm.app.data.model.Customer
+import com.propertycrm.app.data.model.SiteVisit
 import com.propertycrm.app.data.repository.FollowUpRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,9 +22,12 @@ class ReminderNotificationManager(private val context: Context) {
 
     companion object {
         const val CHANNEL_ID = "property_followup_reminders"
+        const val CHANNEL_SITE_VISITS = "property_site_visits"
         const val NOTIFICATION_ID = 1001
         const val EXTRA_NAVIGATE_TO = "NAVIGATE_TO"
+        const val EXTRA_CUSTOMER_ID = "CUSTOMER_ID"
         const val DESTINATION_DAILY_SUMMARY = "daily_summary"
+        const val DESTINATION_CUSTOMER_DETAIL = "customer_detail"
     }
 
     init {
@@ -43,18 +49,31 @@ class ReminderNotificationManager(private val context: Context) {
 
     fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationManager: NotificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
             val name = context.getString(R.string.notification_channel_name)
             val descriptionText = context.getString(R.string.notification_channel_desc)
-            val importance = NotificationManager.IMPORTANCE_HIGH
-            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+            val channel = NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_HIGH).apply {
                 description = descriptionText
                 enableVibration(true)
                 setShowBadge(true)
                 lockscreenVisibility = NotificationCompat.VISIBILITY_PRIVATE
             }
-            val notificationManager: NotificationManager =
-                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
+
+            // Prior Site Visit Channel with High Priority sound & heads-up alert
+            val visitChannel = NotificationChannel(
+                CHANNEL_SITE_VISITS,
+                "Site Visit Prior Alerts",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Customizable prior alerts for upcoming property site visits"
+                enableVibration(true)
+                setShowBadge(true)
+                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
+            }
+            notificationManager.createNotificationChannel(visitChannel)
         }
     }
 
@@ -124,6 +143,76 @@ class ReminderNotificationManager(private val context: Context) {
 
         try {
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        } catch (e: SecurityException) {
+            // Permission denied - safe handling
+        }
+    }
+
+    /**
+     * Posts a customizable prior reminder notification before an upcoming site visit.
+     */
+    fun showPriorSiteVisitNotification(
+        customer: Customer,
+        siteVisit: SiteVisit,
+        minutesBefore: Int
+    ) {
+        if (!customer.notificationsEnabled) return
+
+        val notificationId = (50000 + siteVisit.id).toInt()
+
+        // Content Intent: Opens Customer Detail Screen
+        val contentIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_NAVIGATE_TO, DESTINATION_CUSTOMER_DETAIL)
+            putExtra(EXTRA_CUSTOMER_ID, customer.id)
+        }
+        val contentPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId,
+            contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Call Action: Quick phone call to client
+        val dialIntent = Intent(Intent.ACTION_DIAL).apply {
+            data = Uri.parse("tel:${customer.phone.trim()}")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        val dialPendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId + 1,
+            dialIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val timeNote = if (minutesBefore >= 60) "${minutesBefore / 60} hour(s)" else "$minutesBefore minutes"
+        val title = "🏡 Site Visit in $timeNote: ${customer.name}"
+        val bodyText = buildString {
+            append("Location: ${siteVisit.propertyLocation}")
+            if (!siteVisit.visitTime.isNullOrBlank()) append(" at ${siteVisit.visitTime}")
+            if (!customer.customNotificationNotes.isNullOrBlank()) {
+                append(" • Note: ${customer.customNotificationNotes}")
+            } else if (siteVisit.notes.isNotBlank()) {
+                append(" • ${siteVisit.notes}")
+            }
+        }
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_SITE_VISITS)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(title)
+            .setContentText(bodyText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(bodyText))
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentIntent(contentPendingIntent)
+            .setAutoCancel(true)
+            .addAction(R.drawable.ic_launcher_foreground, "Call Client", dialPendingIntent)
+            .addAction(R.drawable.ic_launcher_foreground, "View Lead", contentPendingIntent)
+            .build()
+
+        try {
+            NotificationManagerCompat.from(context).notify(notificationId, notification)
         } catch (e: SecurityException) {
             // Permission denied - safe handling
         }

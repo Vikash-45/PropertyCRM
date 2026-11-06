@@ -68,6 +68,15 @@ interface CustomerDao {
     @Query("UPDATE customers SET stage = :stage, updated_at = :timestamp WHERE id = :id")
     suspend fun updateStage(id: Long, stage: CustomerStage, timestamp: Long = System.currentTimeMillis())
 
+    @Query("UPDATE customers SET reminder_lead_time_minutes = :leadTimeMinutes, notifications_enabled = :enabled, custom_notification_notes = :notes, updated_at = :timestamp WHERE id = :id")
+    suspend fun updateNotificationSettings(
+        id: Long,
+        leadTimeMinutes: Int,
+        enabled: Boolean,
+        notes: String?,
+        timestamp: Long = System.currentTimeMillis()
+    )
+
     @Query("""
         SELECT * FROM customers 
         WHERE is_archived = 0 AND (

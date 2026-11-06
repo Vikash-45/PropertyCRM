@@ -5,11 +5,13 @@ import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector? = null) {
     object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Dashboard)
     object Customers : Screen("customers", "Customers", Icons.Default.People)
+    object AICopilot : Screen("ai_copilot", "AI Copilot", Icons.Default.SmartToy)
     object FollowUps : Screen("follow_ups?filter={filter}", "Follow-ups", Icons.AutoMirrored.Filled.Assignment) {
         fun createRoute(filter: String = "ALL"): String = "follow_ups?filter=$filter"
     }
@@ -27,6 +29,6 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
 
     companion object {
         val bottomNavItems: List<Screen>
-            get() = listOf(Dashboard, Customers, FollowUps, Settings)
+            get() = listOf(Dashboard, Customers, AICopilot, FollowUps, Settings)
     }
 }

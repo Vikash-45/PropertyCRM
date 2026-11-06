@@ -139,6 +139,15 @@ data class Customer(
     @ColumnInfo(name = "is_do_not_call")
     val isDoNotCall: Boolean = false,
 
+    @ColumnInfo(name = "reminder_lead_time_minutes")
+    val reminderLeadTimeMinutes: Int = 60,
+
+    @ColumnInfo(name = "notifications_enabled")
+    val notificationsEnabled: Boolean = true,
+
+    @ColumnInfo(name = "custom_notification_notes")
+    val customNotificationNotes: String? = null,
+
     @ColumnInfo(name = "created_at")
     val createdAt: Long = System.currentTimeMillis(),
 

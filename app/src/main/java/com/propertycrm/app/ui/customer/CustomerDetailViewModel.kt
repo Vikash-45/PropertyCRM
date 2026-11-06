@@ -75,9 +75,48 @@ class CustomerDetailViewModel(
         }
     }
 
-    fun scheduleSiteVisit(propertyLocation: String, visitDate: Long, visitTime: String?, notes: String) {
+    fun scheduleSiteVisit(
+        propertyLocation: String,
+        visitDate: Long,
+        visitTime: String?,
+        notes: String,
+        onScheduled: ((SiteVisit) -> Unit)? = null
+    ) {
         viewModelScope.launch {
-            customerRepository.scheduleSiteVisit(customerId, propertyLocation, visitDate, visitTime, notes)
+            val visit = SiteVisit(
+                customerId = customerId,
+                propertyLocation = propertyLocation,
+                visitDate = visitDate,
+                visitTime = visitTime,
+                notes = notes,
+                status = AppointmentStatus.SCHEDULED
+            )
+            val id = customerRepository.scheduleSiteVisit(visit)
+            onScheduled?.invoke(visit.copy(id = id))
+        }
+    }
+
+    fun updateNotificationSettings(leadTimeMinutes: Int, enabled: Boolean, notes: String?) {
+        viewModelScope.launch {
+            customerRepository.updateCustomerNotificationSettings(customerId, leadTimeMinutes, enabled, notes)
+        }
+    }
+
+    fun saveAiCallSummary(
+        notes: String,
+        audioPath: String? = null,
+        aiSummaryText: String? = null
+    ) {
+        viewModelScope.launch {
+            val interaction = CustomerInteraction(
+                customerId = customerId,
+                type = InteractionType.AI_CALL_SUMMARY,
+                notes = notes,
+                audioFilePath = audioPath,
+                aiSummary = aiSummaryText,
+                timestamp = System.currentTimeMillis()
+            )
+            customerRepository.recordInteraction(interaction)
         }
     }
 

@@ -20,6 +20,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.propertycrm.app.PropertyCrmApp
+import com.propertycrm.app.ui.ai.AICopilotScreen
+import com.propertycrm.app.ui.ai.AICopilotViewModel
 import com.propertycrm.app.ui.customer.AddEditCustomerScreen
 import com.propertycrm.app.ui.customer.AddEditCustomerViewModel
 import com.propertycrm.app.ui.customer.CustomerDetailScreen
@@ -46,10 +48,11 @@ fun AppNavigation(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Show bottom navigation on primary 4 screens
+    // Show bottom navigation on primary screens
     val isBottomBarVisible = currentRoute in listOf(
         Screen.Dashboard.route,
         Screen.Customers.route,
+        Screen.AICopilot.route,
         Screen.FollowUps.route,
         Screen.Settings.route
     )
@@ -138,10 +141,26 @@ fun AppNavigation(
                 }
                 CustomerListScreen(
                     viewModel = vm,
+                    smartDocumentImporter = appContainer.smartDocumentImporter,
                     onNavigateToAddCustomer = { navController.navigate(Screen.AddCustomer.route) },
                     onNavigateToCustomerDetail = { id ->
                         navController.navigate(Screen.CustomerDetail.createRoute(id))
                     }
+                )
+            }
+
+            // Screen 2.5: AI Copilot
+            composable(Screen.AICopilot.route) {
+                val vm = androidx.compose.runtime.remember {
+                    AICopilotViewModel(
+                        aiCopilotEngine = appContainer.aiCopilotEngine,
+                        aiClient = appContainer.aiClient,
+                        preferenceManager = appContainer.preferenceManager
+                    )
+                }
+                AICopilotScreen(
+                    viewModel = vm,
+                    onNavigateToSettings = { navController.navigate(Screen.Settings.route) }
                 )
             }
 
@@ -201,6 +220,8 @@ fun AppNavigation(
                 }
                 CustomerDetailScreen(
                     viewModel = vm,
+                    callRecordingManager = appContainer.callRecordingManager,
+                    reminderScheduler = appContainer.reminderScheduler,
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToEditCustomer = { id ->
                         navController.navigate(Screen.EditCustomer.createRoute(id))
@@ -250,7 +271,8 @@ fun AppNavigation(
                         preferenceManager = appContainer.preferenceManager,
                         backupRepository = appContainer.backupRepository,
                         reminderScheduler = appContainer.reminderScheduler,
-                        reminderNotificationManager = appContainer.reminderNotificationManager
+                        reminderNotificationManager = appContainer.reminderNotificationManager,
+                        aiClient = appContainer.aiClient
                     )
                 }
                 SettingsScreen(viewModel = vm)

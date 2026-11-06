@@ -28,7 +28,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.VpnKey
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
@@ -377,6 +383,242 @@ fun SettingsScreen(
                             },
                             colors = SwitchDefaults.colors(checkedThumbColor = Color.Black, checkedTrackColor = StatusCompleted)
                         )
+                    }
+                }
+            }
+
+            // AI Gateway & Custom Access Points Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                shape = RoundedCornerShape(16.dp),
+                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(PrimaryBlue.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(imageVector = Icons.Default.SmartToy, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "AI Gateway & Custom Access",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "OpenAI compatible endpoints (OpenRouter, Groq, Ollama, DeepSeek)",
+                                color = TextSecondary,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(text = "Gateway Base URL", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = uiState.aiGatewayUrl,
+                        onValueChange = { viewModel.updateAiGatewayUrl(it) },
+                        placeholder = { Text("https://api.openai.com/v1") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = getDarkTextFieldColors(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(text = "API Key / Bearer Token", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = uiState.aiApiKey,
+                        onValueChange = { viewModel.updateAiApiKey(it) },
+                        placeholder = { Text("sk-...") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = getDarkTextFieldColors(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(text = "Model Identifier", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = uiState.aiModel,
+                        onValueChange = { viewModel.updateAiModel(it) },
+                        placeholder = { Text("gpt-4o-mini, gpt-4o, claude-3-5-sonnet, deepseek-chat") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = getDarkTextFieldColors(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(text = "Custom System Prompt (Optional)", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = uiState.aiSystemPrompt,
+                        onValueChange = { viewModel.updateAiSystemPrompt(it) },
+                        placeholder = { Text("Custom instructions for CRM Copilot and document extraction") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = getDarkTextFieldColors(),
+                        maxLines = 3,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "Temperature: ${"%.2f".format(uiState.aiTemperature)}", color = TextPrimary, fontSize = 12.sp)
+                        Text(text = if (uiState.aiTemperature < 0.3f) "Precise" else if (uiState.aiTemperature > 0.7f) "Creative" else "Balanced", color = PrimaryBlue, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    Slider(
+                        value = uiState.aiTemperature,
+                        onValueChange = { viewModel.updateAiTemperature(it) },
+                        valueRange = 0.0f..1.0f,
+                        steps = 9,
+                        colors = SliderDefaults.colors(
+                            thumbColor = PrimaryBlue,
+                            activeTrackColor = PrimaryBlue,
+                            inactiveTrackColor = DarkSurfaceVariant
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Button(
+                        onClick = { viewModel.testAiGatewayConnection() },
+                        enabled = !uiState.isTestingAiConnection,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        if (uiState.isTestingAiConnection) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = "Testing Connection...", color = Color.Black, fontWeight = FontWeight.Bold)
+                        } else {
+                            Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = "Test Gateway Connection", color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            // Call Recording & Audio Intelligence Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                shape = RoundedCornerShape(16.dp),
+                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF10B981).copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(imageVector = Icons.Default.Mic, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Call Recording & AI Audio",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "Automatic recording & AI summarization into customer timeline",
+                                color = TextSecondary,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "Auto-Record Calls / Notes", color = TextPrimary, fontWeight = FontWeight.Medium)
+                            Text(text = "Save audio recordings for customer interactions", color = TextSecondary, fontSize = 12.sp)
+                        }
+                        Switch(
+                            checked = uiState.autoRecordCalls,
+                            onCheckedChange = { viewModel.toggleAutoRecordCalls(it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = Color.Black, checkedTrackColor = Color(0xFF10B981))
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "Auto-Summarize with AI", color = TextPrimary, fontWeight = FontWeight.Medium)
+                            Text(text = "Run AI summarizer after call/audio ends and extract sentiments & action items", color = TextSecondary, fontSize = 12.sp)
+                        }
+                        Switch(
+                            checked = uiState.autoSummarizeCalls,
+                            onCheckedChange = { viewModel.toggleAutoSummarizeCalls(it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = Color.Black, checkedTrackColor = Color(0xFF10B981))
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(text = "Default Site Visit Prior Alert Lead Time", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(15 to "15m", 30 to "30m", 60 to "1h", 120 to "2h", 1440 to "1d").forEach { (mins, label) ->
+                            val isSel = uiState.defaultVisitLeadTime == mins
+                            Button(
+                                onClick = { viewModel.updateDefaultVisitLeadTime(mins) },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isSel) PrimaryBlue else DarkSurfaceVariant
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp, horizontal = 2.dp)
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = if (isSel) Color.Black else TextSecondary,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
                     }
                 }
             }

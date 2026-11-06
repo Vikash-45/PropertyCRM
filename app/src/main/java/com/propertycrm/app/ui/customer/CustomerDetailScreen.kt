@@ -1,6 +1,7 @@
 package com.propertycrm.app.ui.customer
 
 import android.app.DatePickerDialog
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Chat
@@ -37,22 +39,73 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PhoneDisabled
 import androidx.compose.material.icons.filled.PhoneForwarded
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.propertycrm.app.R
+import com.propertycrm.app.ai.CallRecordingManager
+import com.propertycrm.app.data.model.AppointmentStatus
+import com.propertycrm.app.data.model.CallOutcome
+import com.propertycrm.app.data.model.CustomerInteraction
+import com.propertycrm.app.data.model.CustomerStage
+import com.propertycrm.app.data.model.FollowUp
+import com.propertycrm.app.data.model.FollowUpStatus
+import com.propertycrm.app.data.model.InteractionType
+import com.propertycrm.app.data.model.SiteVisit
+import com.propertycrm.app.notification.ReminderScheduler
+import kotlinx.coroutines.launch
+import java.io.File
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -125,6 +178,8 @@ import java.util.Calendar
 @Composable
 fun CustomerDetailScreen(
     viewModel: CustomerDetailViewModel,
+    callRecordingManager: CallRecordingManager? = null,
+    reminderScheduler: ReminderScheduler? = null,
     onNavigateBack: () -> Unit,
     onNavigateToEditCustomer: (Long) -> Unit
 ) {
@@ -132,6 +187,7 @@ fun CustomerDetailScreen(
     val interactions by viewModel.interactions.collectAsState()
     val siteVisits by viewModel.siteVisits.collectAsState()
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableStateOf(0) } // 0: Timeline, 1: Follow-ups, 2: Site Visits
     var showMenu by remember { mutableStateOf(false) }
@@ -141,6 +197,8 @@ fun CustomerDetailScreen(
     var showAddFollowUpDialog by remember { mutableStateOf(false) }
     var showScheduleVisitDialog by remember { mutableStateOf(false) }
     var showWhatsAppTemplates by remember { mutableStateOf(false) }
+    var showAudioSummarizerDialog by remember { mutableStateOf(false) }
+    var showNotificationSettingsDialog by remember { mutableStateOf(false) }
     var activeRescheduleFollowUp by remember { mutableStateOf<FollowUp?>(null) }
     var activeCompleteFollowUp by remember { mutableStateOf<FollowUp?>(null) }
 
@@ -388,6 +446,36 @@ fun CustomerDetailScreen(
                                     Text("SMS", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 }
                             }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // AI Audio & Call Summarizer Button + Visit Alert Customization
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = { showAudioSummarizerDialog = true },
+                                    modifier = Modifier.weight(1.3f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E3A8A)),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Record / AI Call Summary", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+
+                                Button(
+                                    onClick = { showNotificationSettingsDialog = true },
+                                    modifier = Modifier.weight(0.9f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.Notifications, contentDescription = null, tint = if (customer.notificationsEnabled) PrimaryBlue else TextMuted, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Alert (${customer.reminderLeadTimeMinutes}m)", color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
                         }
                     }
                 }
@@ -576,8 +664,52 @@ fun CustomerDetailScreen(
             defaultLocation = customer?.preferredLocation ?: "",
             onDismiss = { showScheduleVisitDialog = false },
             onConfirm = { loc, date, time, notes ->
-                viewModel.scheduleSiteVisit(loc, date, time, notes)
+                viewModel.scheduleSiteVisit(loc, date, time, notes) { visit ->
+                    if (reminderScheduler != null && customer != null && customer.notificationsEnabled) {
+                        reminderScheduler.schedulePriorSiteVisitAlert(customer, visit)
+                    }
+                }
                 showScheduleVisitDialog = false
+            }
+        )
+    }
+
+    // AI Audio & Call Summarizer Dialog
+    if (showAudioSummarizerDialog && customer != null) {
+        AudioCallSummarizerDialog(
+            customer = customer,
+            callRecordingManager = callRecordingManager,
+            onDismiss = { showAudioSummarizerDialog = false },
+            onSummarySaved = { notes, audioFile, summaryText ->
+                viewModel.saveAiCallSummary(notes, audioFile?.absolutePath, summaryText)
+                showAudioSummarizerDialog = false
+                Toast.makeText(context, "AI Call Summary added to customer timeline!", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+
+    // Customer Prior Notification Settings Dialog
+    if (showNotificationSettingsDialog && customer != null) {
+        CustomerNotificationSettingsDialog(
+            customer = customer,
+            onDismiss = { showNotificationSettingsDialog = false },
+            onSave = { leadTime, enabled, notes ->
+                viewModel.updateNotificationSettings(leadTime, enabled, notes)
+                // Reschedule pending site visits for this customer
+                if (reminderScheduler != null) {
+                    siteVisits.filter { it.status == AppointmentStatus.SCHEDULED }.forEach { visit ->
+                        if (enabled) {
+                            reminderScheduler.schedulePriorSiteVisitAlert(
+                                customer.copy(reminderLeadTimeMinutes = leadTime, notificationsEnabled = enabled, customNotificationNotes = notes),
+                                visit
+                            )
+                        } else {
+                            reminderScheduler.cancelSiteVisitPriorAlert(visit.id)
+                        }
+                    }
+                }
+                showNotificationSettingsDialog = false
+                Toast.makeText(context, "Notification preferences updated!", Toast.LENGTH_SHORT).show()
             }
         )
     }
@@ -743,9 +875,15 @@ fun FollowUpTimelineCard(
 fun InteractionItemCard(interaction: CustomerInteraction) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        colors = CardDefaults.cardColors(
+            containerColor = if (interaction.type == InteractionType.AI_CALL_SUMMARY) Color(0xFF132238) else DarkSurface
+        ),
         shape = RoundedCornerShape(12.dp),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
+        border = CardDefaults.outlinedCardBorder().copy(
+            brush = androidx.compose.ui.graphics.SolidColor(
+                if (interaction.type == InteractionType.AI_CALL_SUMMARY) PrimaryBlue.copy(alpha = 0.5f) else DarkBorder
+            )
+        )
     ) {
         Row(
             modifier = Modifier
@@ -759,6 +897,8 @@ fun InteractionItemCard(interaction: CustomerInteraction) {
                     .clip(CircleShape)
                     .background(
                         when (interaction.type) {
+                            InteractionType.AI_CALL_SUMMARY -> PrimaryBlue.copy(alpha = 0.25f)
+                            InteractionType.DOCUMENT_IMPORT -> Color(0xFFF59E0B).copy(alpha = 0.2f)
                             InteractionType.CALL -> PrimaryBlue.copy(alpha = 0.2f)
                             InteractionType.SITE_VISIT -> StatusUpcoming.copy(alpha = 0.2f)
                             InteractionType.DO_NOT_CALL_TOGGLED -> StatusOverdue.copy(alpha = 0.2f)
@@ -769,6 +909,8 @@ fun InteractionItemCard(interaction: CustomerInteraction) {
             ) {
                 Icon(
                     imageVector = when (interaction.type) {
+                        InteractionType.AI_CALL_SUMMARY -> Icons.Default.AutoAwesome
+                        InteractionType.DOCUMENT_IMPORT -> Icons.Default.Edit
                         InteractionType.CALL -> Icons.Default.Call
                         InteractionType.SITE_VISIT -> Icons.Default.EventAvailable
                         InteractionType.DO_NOT_CALL_TOGGLED -> Icons.Default.PhoneDisabled
@@ -776,6 +918,8 @@ fun InteractionItemCard(interaction: CustomerInteraction) {
                     },
                     contentDescription = null,
                     tint = when (interaction.type) {
+                        InteractionType.AI_CALL_SUMMARY -> PrimaryBlue
+                        InteractionType.DOCUMENT_IMPORT -> Color(0xFFF59E0B)
                         InteractionType.CALL -> PrimaryBlue
                         InteractionType.SITE_VISIT -> StatusUpcoming
                         InteractionType.DO_NOT_CALL_TOGGLED -> StatusOverdue
@@ -793,12 +937,18 @@ fun InteractionItemCard(interaction: CustomerInteraction) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = interaction.type.getDisplayName() + if (interaction.callOutcome != null) " (${interaction.callOutcome.getDisplayName()})" else "",
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
-                        fontSize = 13.sp
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = interaction.type.getDisplayName() + if (interaction.callOutcome != null) " (${interaction.callOutcome.getDisplayName()})" else "",
+                            fontWeight = FontWeight.Bold,
+                            color = if (interaction.type == InteractionType.AI_CALL_SUMMARY) PrimaryBlue else TextPrimary,
+                            fontSize = 13.sp
+                        )
+                        if (interaction.audioFilePath != null) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(imageVector = Icons.Default.Mic, contentDescription = "Audio Recorded", tint = Color(0xFF10B981), modifier = Modifier.size(13.dp))
+                        }
+                    }
                     Text(
                         text = DateUtils.formatDate(interaction.timestamp),
                         color = TextSecondary,
@@ -808,7 +958,12 @@ fun InteractionItemCard(interaction: CustomerInteraction) {
 
                 if (interaction.notes.isNotBlank()) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = interaction.notes, color = TextSecondary, fontSize = 12.sp)
+                    Text(
+                        text = interaction.notes,
+                        color = if (interaction.type == InteractionType.AI_CALL_SUMMARY) TextPrimary else TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp
+                    )
                 }
             }
         }
@@ -1038,4 +1193,307 @@ private fun DetailRow(label: String, value: String) {
         Text(text = label, color = TextSecondary, fontSize = 13.sp)
         Text(text = value, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
     }
+}
+
+@Composable
+fun AudioCallSummarizerDialog(
+    customer: com.propertycrm.app.data.model.Customer,
+    callRecordingManager: CallRecordingManager?,
+    onDismiss: () -> Unit,
+    onSummarySaved: (notes: String, audioFile: File?, summaryText: String?) -> Unit
+) {
+    var isRecording by remember { mutableStateOf(callRecordingManager?.isRecording() == true) }
+    var notesText by remember { mutableStateOf("") }
+    var isSummarizing by remember { mutableStateOf(false) }
+    var audioFile by remember { mutableStateOf<File?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    AlertDialog(
+        onDismissRequest = {
+            if (isRecording) {
+                audioFile = callRecordingManager?.stopRecording()
+                isRecording = false
+            }
+            onDismiss()
+        },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(if (isRecording) StatusOverdue.copy(alpha = 0.2f) else PrimaryBlue.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
+                        contentDescription = null,
+                        tint = if (isRecording) StatusOverdue else PrimaryBlue,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = if (isRecording) "Recording Audio..." else "Call & Voice Note",
+                        color = TextPrimary,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${customer.name} • ${customer.phone}",
+                        color = TextSecondary,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Audio recording control pill
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = if (isRecording) "Recording in progress" else if (audioFile != null) "Audio Captured" else "Audio Capture",
+                                color = if (isRecording) StatusOverdue else TextPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp
+                            )
+                            Text(
+                                text = if (isRecording) "Tap to finish recording" else if (audioFile != null) audioFile!!.name else "Optional microphone audio record",
+                                color = TextSecondary,
+                                fontSize = 11.sp
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                if (isRecording) {
+                                    audioFile = callRecordingManager?.stopRecording()
+                                    isRecording = false
+                                    Toast.makeText(context, "Audio recorded successfully!", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    val started = callRecordingManager?.startRecording(customer.id, customer.name, customer.phone) ?: false
+                                    if (started) isRecording = true
+                                    else Toast.makeText(context, "Failed to initialize microphone.", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isRecording) StatusOverdue else PrimaryBlue
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
+                                contentDescription = null,
+                                tint = Color.Black,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(if (isRecording) "Stop" else "Record", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(text = "Call Notes / Transcript / Key Points", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = notesText,
+                    onValueChange = { notesText = it },
+                    placeholder = { Text("Client requirements, budget discussions, floor preference, objections...") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(130.dp),
+                    colors = getDarkTextFieldColors(),
+                    shape = RoundedCornerShape(10.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (isRecording) {
+                        audioFile = callRecordingManager?.stopRecording()
+                        isRecording = false
+                    }
+                    if (callRecordingManager != null) {
+                        coroutineScope.launch {
+                            isSummarizing = true
+                            val result = callRecordingManager.autoSummarizeAndImport(
+                                customerId = customer.id,
+                                customerName = customer.name,
+                                customerPhone = customer.phone,
+                                audioFile = audioFile,
+                                callNotesOrTranscript = notesText
+                            )
+                            isSummarizing = false
+                            if (result.isSuccess) {
+                                val item = result.getOrNull()
+                                onSummarySaved(item?.notes ?: notesText, audioFile, item?.aiSummary)
+                            } else {
+                                onSummarySaved(notesText, audioFile, null)
+                            }
+                        }
+                    } else {
+                        onSummarySaved(notesText, audioFile, null)
+                    }
+                },
+                enabled = !isSummarizing && (notesText.isNotBlank() || audioFile != null || isRecording),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+            ) {
+                if (isSummarizing) {
+                    CircularProgressIndicator(modifier = Modifier.size(14.dp), color = Color.Black, strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("AI Summarizing...", color = Color.Black, fontWeight = FontWeight.Bold)
+                } else {
+                    Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("AI Summarize & Save", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                if (isRecording) {
+                    callRecordingManager?.stopRecording()
+                    isRecording = false
+                }
+                onDismiss()
+            }) {
+                Text("Cancel", color = TextSecondary)
+            }
+        },
+        containerColor = DarkSurface,
+        shape = RoundedCornerShape(16.dp)
+    )
+}
+
+@Composable
+fun CustomerNotificationSettingsDialog(
+    customer: com.propertycrm.app.data.model.Customer,
+    onDismiss: () -> Unit,
+    onSave: (leadTimeMinutes: Int, enabled: Boolean, notes: String?) -> Unit
+) {
+    var notificationsEnabled by remember { mutableStateOf(customer.notificationsEnabled) }
+    var selectedLeadTime by remember { mutableStateOf(customer.reminderLeadTimeMinutes) }
+    var customNotes by remember { mutableStateOf(customer.customNotificationNotes ?: "") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(PrimaryBlue.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(imageVector = Icons.Default.Notifications, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = "Prior Visit Notifications",
+                        color = TextPrimary,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Per-customer alert preferences",
+                        color = TextSecondary,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Enable toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "Enable Site Visit Alerts", color = TextPrimary, fontWeight = FontWeight.Medium)
+                    Switch(
+                        checked = notificationsEnabled,
+                        onCheckedChange = { notificationsEnabled = it },
+                        colors = SwitchDefaults.colors(checkedThumbColor = Color.Black, checkedTrackColor = PrimaryBlue)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(text = "Alert Lead Time Prior to Visit", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(15 to "15m", 30 to "30m", 60 to "1h", 120 to "2h", 1440 to "1d").forEach { (mins, label) ->
+                        val isSel = selectedLeadTime == mins
+                        Button(
+                            onClick = { selectedLeadTime = mins },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isSel) PrimaryBlue else DarkSurfaceVariant
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp, horizontal = 2.dp)
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (isSel) Color.Black else TextSecondary,
+                                fontSize = 11.sp,
+                                fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(text = "Custom Reminder Notes", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = customNotes,
+                    onValueChange = { customNotes = it },
+                    placeholder = { Text("e.g. Bring key for top floor, verify buyer ID proof") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = getDarkTextFieldColors(),
+                    shape = RoundedCornerShape(10.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSave(selectedLeadTime, notificationsEnabled, customNotes.takeIf { it.isNotBlank() }) },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+            ) {
+                Text("Save Preferences", color = Color.Black, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = TextSecondary)
+            }
+        },
+        containerColor = DarkSurface,
+        shape = RoundedCornerShape(16.dp)
+    )
 }

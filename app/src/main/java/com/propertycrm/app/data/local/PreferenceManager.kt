@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -33,7 +34,53 @@ class PreferenceManager(private val context: Context) {
         // Backup audit metadata
         val KEY_LAST_BACKUP_TIME = longPreferencesKey("last_backup_time")
         val KEY_LAST_RESTORE_TIME = longPreferencesKey("last_restore_time")
+
+        // AI Custom Gateway & Model Configuration
+        val KEY_AI_GATEWAY_URL = stringPreferencesKey("ai_gateway_url")
+        val KEY_AI_API_KEY = stringPreferencesKey("ai_api_key")
+        val KEY_AI_MODEL = stringPreferencesKey("ai_model")
+        val KEY_AI_SYSTEM_PROMPT = stringPreferencesKey("ai_system_prompt")
+        val KEY_AI_TEMPERATURE = floatPreferencesKey("ai_temperature")
+
+        // Call Recording & Audio Summarization
+        val KEY_AUTO_RECORD_CALLS = booleanPreferencesKey("auto_record_calls")
+        val KEY_AUTO_SUMMARIZE_CALLS = booleanPreferencesKey("auto_summarize_calls")
+        val KEY_DEFAULT_VISIT_LEAD_TIME = intPreferencesKey("default_visit_lead_time")
     }
+
+    val aiGatewayUrl: Flow<String> = context.dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_AI_GATEWAY_URL] ?: "https://api.openai.com/v1" }
+
+    val aiApiKey: Flow<String> = context.dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_AI_API_KEY] ?: "" }
+
+    val aiModel: Flow<String> = context.dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_AI_MODEL] ?: "gpt-4o-mini" }
+
+    val aiSystemPrompt: Flow<String> = context.dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map {
+            it[KEY_AI_SYSTEM_PROMPT] ?: "You are an expert real estate AI copilot for Property CRM. You have full access to manage CRM customer records, site visits, and follow-ups through tools. Always be concise, helpful, and take action when requested."
+        }
+
+    val aiTemperature: Flow<Float> = context.dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_AI_TEMPERATURE] ?: 0.7f }
+
+    val autoRecordCalls: Flow<Boolean> = context.dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_AUTO_RECORD_CALLS] ?: true }
+
+    val autoSummarizeCalls: Flow<Boolean> = context.dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_AUTO_SUMMARIZE_CALLS] ?: true }
+
+    val defaultVisitLeadTime: Flow<Int> = context.dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[KEY_DEFAULT_VISIT_LEAD_TIME] ?: 60 }
 
     val isReminderEnabled: Flow<Boolean> = context.dataStore.data
         .catch { exception ->
@@ -143,6 +190,40 @@ class PreferenceManager(private val context: Context) {
     suspend fun updateLastRestoreTime(timestamp: Long = System.currentTimeMillis()) {
         context.dataStore.edit { preferences ->
             preferences[KEY_LAST_RESTORE_TIME] = timestamp
+        }
+    }
+
+    suspend fun setAiGatewayConfig(
+        gatewayUrl: String,
+        apiKey: String,
+        model: String,
+        systemPrompt: String? = null,
+        temperature: Float? = null
+    ) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_AI_GATEWAY_URL] = gatewayUrl.trim().trimEnd('/')
+            preferences[KEY_AI_API_KEY] = apiKey.trim()
+            preferences[KEY_AI_MODEL] = model.trim()
+            if (systemPrompt != null) preferences[KEY_AI_SYSTEM_PROMPT] = systemPrompt
+            if (temperature != null) preferences[KEY_AI_TEMPERATURE] = temperature
+        }
+    }
+
+    suspend fun setAutoRecordCalls(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_AUTO_RECORD_CALLS] = enabled
+        }
+    }
+
+    suspend fun setAutoSummarizeCalls(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_AUTO_SUMMARIZE_CALLS] = enabled
+        }
+    }
+
+    suspend fun setDefaultVisitLeadTime(minutes: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_DEFAULT_VISIT_LEAD_TIME] = minutes
         }
     }
 }

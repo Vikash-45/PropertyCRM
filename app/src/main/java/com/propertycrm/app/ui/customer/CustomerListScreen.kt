@@ -1,5 +1,8 @@
 package com.propertycrm.app.ui.customer
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,10 +27,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Search
@@ -35,6 +41,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -53,6 +60,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,16 +72,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.propertycrm.app.R
+import com.propertycrm.app.ai.DocumentImportResult
+import com.propertycrm.app.ai.SmartDocumentImporter
 import com.propertycrm.app.data.model.Customer
 import com.propertycrm.app.data.model.CustomerStage
 import com.propertycrm.app.data.model.PropertyType
 import com.propertycrm.app.data.model.RequirementType
+import com.propertycrm.app.ui.components.DocumentImportDialog
 import com.propertycrm.app.ui.components.DoNotCallBadge
 import com.propertycrm.app.ui.components.EmptyStateCard
 import com.propertycrm.app.ui.components.PropertyTypeBadge
 import com.propertycrm.app.ui.components.RequirementTypeChip
 import com.propertycrm.app.ui.components.StageChip
 import com.propertycrm.app.ui.components.WhatsAppTemplateDialog
+import kotlinx.coroutines.launch
 import com.propertycrm.app.ui.theme.DarkBackground
 import com.propertycrm.app.ui.theme.DarkBorder
 import com.propertycrm.app.ui.theme.DarkSurface
@@ -90,6 +102,7 @@ import com.propertycrm.app.util.PhoneUtils
 @Composable
 fun CustomerListScreen(
     viewModel: CustomerListViewModel,
+    smartDocumentImporter: SmartDocumentImporter? = null,
     onNavigateToAddCustomer: () -> Unit,
     onNavigateToCustomerDetail: (Long) -> Unit
 ) {
@@ -102,7 +115,34 @@ fun CustomerListScreen(
     val stats by viewModel.stats.collectAsState()
 
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var customerForWhatsAppTemplates by remember { mutableStateOf<Customer?>(null) }
+
+    var importResultDialog by remember { mutableStateOf<DocumentImportResult?>(null) }
+    var isDocumentParsing by remember { mutableStateOf(false) }
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null && smartDocumentImporter != null) {
+            coroutineScope.launch {
+                isDocumentParsing = true
+                Toast.makeText(context, "Scanning document for client leads...", Toast.LENGTH_SHORT).show()
+                val result = smartDocumentImporter.parseDocument(uri)
+                isDocumentParsing = false
+                if (result.isSuccess) {
+                    val importRes = result.getOrNull()
+                    if (importRes != null && importRes.candidates.isNotEmpty()) {
+                        importResultDialog = importRes
+                    } else {
+                        Toast.makeText(context, "No leads detected in document.", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    Toast.makeText(context, "Document parse error: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
 
     Scaffold(
         containerColor = DarkBackground,
@@ -147,16 +187,38 @@ fun CustomerListScreen(
                     )
                 }
 
-                if (viewModel.hasActiveFilters()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Import Document / Leads button (PDF, text, JSON, CSV, Image)
                     Button(
-                        onClick = { viewModel.clearFilters() },
+                        onClick = { filePickerLauncher.launch("*/*") },
+                        enabled = !isDocumentParsing,
                         colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
                         shape = RoundedCornerShape(20.dp),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = null, tint = StatusOverdue, modifier = Modifier.size(14.dp))
+                        if (isDocumentParsing) {
+                            CircularProgressIndicator(modifier = Modifier.size(12.dp), color = PrimaryBlue, strokeWidth = 1.5.dp)
+                        } else {
+                            Icon(imageVector = Icons.Default.FileDownload, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(14.dp))
+                        }
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "Reset Filters", color = StatusOverdue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "Import Leads", color = PrimaryBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    if (viewModel.hasActiveFilters()) {
+                        Button(
+                            onClick = { viewModel.clearFilters() },
+                            colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
+                            shape = RoundedCornerShape(20.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Close, contentDescription = null, tint = StatusOverdue, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(text = "Reset Filters", color = StatusOverdue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -387,6 +449,23 @@ fun CustomerListScreen(
             onSend = { customMessage ->
                 customerForWhatsAppTemplates = null
                 PhoneUtils.openWhatsApp(context, customer.phone, customMessage)
+            }
+        )
+    }
+
+    // Smart Document Import Leads Preview Dialog
+    importResultDialog?.let { result ->
+        DocumentImportDialog(
+            importResult = result,
+            onDismiss = { importResultDialog = null },
+            onConfirmImport = { candidates ->
+                importResultDialog = null
+                if (smartDocumentImporter != null) {
+                    coroutineScope.launch {
+                        val count = smartDocumentImporter.commitCandidatesToDatabase(candidates, result.sourceName)
+                        Toast.makeText(context, "Successfully imported $count client leads!", Toast.LENGTH_LONG).show()
+                    }
+                }
             }
         )
     }

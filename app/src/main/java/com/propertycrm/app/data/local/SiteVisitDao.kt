@@ -34,6 +34,9 @@ interface SiteVisitDao {
     """)
     fun countUpcomingSiteVisitsFlow(startOfDay: Long): Flow<Int>
 
+    @Query("SELECT * FROM site_visits WHERE id = :id LIMIT 1")
+    suspend fun getSiteVisitById(id: Long): SiteVisit?
+
     @Query("SELECT * FROM site_visits ORDER BY id ASC")
     suspend fun getAllSiteVisitsList(): List<SiteVisit>
 

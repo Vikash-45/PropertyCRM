@@ -19,7 +19,7 @@ import com.propertycrm.app.data.model.SiteVisit
         SiteVisit::class,
         CustomerInteraction::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -82,6 +82,16 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE customers ADD COLUMN reminder_lead_time_minutes INTEGER NOT NULL DEFAULT 60")
+                db.execSQL("ALTER TABLE customers ADD COLUMN notifications_enabled INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE customers ADD COLUMN custom_notification_notes TEXT")
+                db.execSQL("ALTER TABLE customer_interactions ADD COLUMN audio_file_path TEXT")
+                db.execSQL("ALTER TABLE customer_interactions ADD COLUMN ai_summary TEXT")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -89,7 +99,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     DATABASE_NAME
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .fallbackToDestructiveMigrationOnDowngrade()
                     .build()
                 INSTANCE = instance

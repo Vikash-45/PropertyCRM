@@ -14,6 +14,8 @@ enum class InteractionType {
     FOLLOW_UP_CREATED,
     RESCHEDULED,
     DO_NOT_CALL_TOGGLED,
+    AI_CALL_SUMMARY,
+    DOCUMENT_IMPORT,
     SYSTEM;
 
     fun getDisplayName(): String {
@@ -25,6 +27,8 @@ enum class InteractionType {
             FOLLOW_UP_CREATED -> "Follow-up Created"
             RESCHEDULED -> "Rescheduled"
             DO_NOT_CALL_TOGGLED -> "Do Not Call Updated"
+            AI_CALL_SUMMARY -> "AI Call Summary"
+            DOCUMENT_IMPORT -> "Document Ingestion"
             SYSTEM -> "System"
         }
     }
@@ -86,6 +90,12 @@ data class CustomerInteraction(
 
     @ColumnInfo(name = "notes")
     val notes: String = "",
+
+    @ColumnInfo(name = "audio_file_path")
+    val audioFilePath: String? = null,
+
+    @ColumnInfo(name = "ai_summary")
+    val aiSummary: String? = null,
 
     @ColumnInfo(name = "timestamp")
     val timestamp: Long = System.currentTimeMillis()

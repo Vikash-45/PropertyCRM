@@ -42,6 +42,9 @@ data class AddEditCustomerUiState(
     val isArchived: Boolean = false,
     val isDuplicatePhone: Boolean = false,
     val validationError: String? = null,
+    val reminderLeadTimeMinutes: Int = 60,
+    val notificationsEnabled: Boolean = true,
+    val customNotificationNotes: String = "",
     val isSaving: Boolean = false,
     val isEditMode: Boolean = false
 )
@@ -93,6 +96,9 @@ class AddEditCustomerViewModel(
                         stage = customer.stage,
                         notes = customer.notes,
                         isArchived = customer.isArchived,
+                        reminderLeadTimeMinutes = customer.reminderLeadTimeMinutes,
+                        notificationsEnabled = customer.notificationsEnabled,
+                        customNotificationNotes = customer.customNotificationNotes ?: "",
                         isEditMode = true
                     )
                 }
@@ -162,6 +168,15 @@ class AddEditCustomerViewModel(
     fun onNotesChange(notes: String) =
         _uiState.update { it.copy(notes = notes) }
 
+    fun onReminderLeadTimeChange(minutes: Int) =
+        _uiState.update { it.copy(reminderLeadTimeMinutes = minutes) }
+
+    fun onNotificationsEnabledToggle(enabled: Boolean) =
+        _uiState.update { it.copy(notificationsEnabled = enabled) }
+
+    fun onCustomNotificationNotesChange(notes: String) =
+        _uiState.update { it.copy(customNotificationNotes = notes) }
+
     fun saveCustomer() {
         val s = _uiState.value
         if (s.name.isBlank() || s.phone.isBlank() || s.inquiryReason.isBlank()) {
@@ -197,6 +212,9 @@ class AddEditCustomerViewModel(
                         stage = s.stage,
                         notes = s.notes.trim(),
                         isArchived = s.isArchived,
+                        reminderLeadTimeMinutes = s.reminderLeadTimeMinutes,
+                        notificationsEnabled = s.notificationsEnabled,
+                        customNotificationNotes = s.customNotificationNotes.trim().takeIf { it.isNotBlank() },
                         updatedAt = System.currentTimeMillis()
                     )
                     customerRepository.updateCustomer(customer)
@@ -217,7 +235,10 @@ class AddEditCustomerViewModel(
                         isDoNotCall = s.isDoNotCall,
                         firstVisitDate = s.firstVisitDate,
                         stage = s.stage,
-                        notes = s.notes.trim()
+                        notes = s.notes.trim(),
+                        reminderLeadTimeMinutes = s.reminderLeadTimeMinutes,
+                        notificationsEnabled = s.notificationsEnabled,
+                        customNotificationNotes = s.customNotificationNotes.trim().takeIf { it.isNotBlank() }
                     )
                     customerRepository.saveCustomerWithInitialFollowUp(
                         customer = newCustomer,

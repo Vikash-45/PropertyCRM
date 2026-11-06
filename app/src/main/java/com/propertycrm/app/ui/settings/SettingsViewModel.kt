@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.propertycrm.app.ai.AIGatewayClient
 import com.propertycrm.app.data.local.PreferenceManager
 import com.propertycrm.app.data.model.BackupData
 import com.propertycrm.app.data.model.ImportResult
@@ -31,7 +32,16 @@ data class SettingsUiState(
     val isPinLockEnabled: Boolean = false,
     val lastBackupTime: Long? = null,
     val lastRestoreTime: Long? = null,
-    val isOperationRunning: Boolean = false
+    val isOperationRunning: Boolean = false,
+    val aiGatewayUrl: String = "https://api.openai.com/v1",
+    val aiApiKey: String = "",
+    val aiModel: String = "gpt-4o-mini",
+    val aiSystemPrompt: String = "",
+    val aiTemperature: Float = 0.3f,
+    val autoRecordCalls: Boolean = false,
+    val autoSummarizeCalls: Boolean = true,
+    val defaultVisitLeadTime: Int = 60,
+    val isTestingAiConnection: Boolean = false
 )
 
 sealed class SettingsEvent {
@@ -43,16 +53,20 @@ class SettingsViewModel(
     private val preferenceManager: PreferenceManager,
     private val backupRepository: BackupRepository,
     private val reminderScheduler: ReminderScheduler,
-    private val reminderNotificationManager: ReminderNotificationManager
+    private val reminderNotificationManager: ReminderNotificationManager,
+    private val aiClient: AIGatewayClient? = null
 ) : ViewModel() {
 
     private val _eventFlow = MutableSharedFlow<SettingsEvent>()
     val eventFlow: SharedFlow<SettingsEvent> = _eventFlow.asSharedFlow()
 
     private val _isOperationRunning = MutableStateFlow(false)
+    private val _isTestingAiConnection = MutableStateFlow(false)
 
     private data class PrefGroup1(val enabled: Boolean, val hour: Int, val min: Int, val lang: String)
     private data class PrefGroup2(val pinLock: Boolean, val lastBackup: Long?, val lastRestore: Long?, val opRunning: Boolean)
+    private data class PrefGroup3(val aiUrl: String, val aiKey: String, val aiModel: String, val aiPrompt: String, val aiTemp: Float)
+    private data class PrefGroup4(val autoRecord: Boolean, val autoSummarize: Boolean, val leadTime: Int, val testingAi: Boolean)
 
     private val prefFlow1 = combine(
         preferenceManager.isReminderEnabled,
@@ -68,10 +82,27 @@ class SettingsViewModel(
         _isOperationRunning
     ) { pinLock, lastBackup, lastRestore, opRunning -> PrefGroup2(pinLock, lastBackup, lastRestore, opRunning) }
 
+    private val prefFlow3 = combine(
+        preferenceManager.aiGatewayUrl,
+        preferenceManager.aiApiKey,
+        preferenceManager.aiModel,
+        preferenceManager.aiSystemPrompt,
+        preferenceManager.aiTemperature
+    ) { url, key, model, prompt, temp -> PrefGroup3(url, key, model, prompt, temp) }
+
+    private val prefFlow4 = combine(
+        preferenceManager.autoRecordCalls,
+        preferenceManager.autoSummarizeCalls,
+        preferenceManager.defaultVisitLeadTime,
+        _isTestingAiConnection
+    ) { rec, summ, lead, testing -> PrefGroup4(rec, summ, lead, testing) }
+
     val uiState: StateFlow<SettingsUiState> = combine(
         prefFlow1,
-        prefFlow2
-    ) { p1, p2 ->
+        prefFlow2,
+        prefFlow3,
+        prefFlow4
+    ) { p1, p2, p3, p4 ->
         SettingsUiState(
             isReminderEnabled = p1.enabled,
             reminderHour = p1.hour,
@@ -81,7 +112,16 @@ class SettingsViewModel(
             isPinLockEnabled = p2.pinLock,
             lastBackupTime = p2.lastBackup,
             lastRestoreTime = p2.lastRestore,
-            isOperationRunning = p2.opRunning
+            isOperationRunning = p2.opRunning,
+            aiGatewayUrl = p3.aiUrl,
+            aiApiKey = p3.aiKey,
+            aiModel = p3.aiModel,
+            aiSystemPrompt = p3.aiPrompt,
+            aiTemperature = p3.aiTemp,
+            autoRecordCalls = p4.autoRecord,
+            autoSummarizeCalls = p4.autoSummarize,
+            defaultVisitLeadTime = p4.leadTime,
+            isTestingAiConnection = p4.testingAi
         )
     }.stateIn(
         scope = viewModelScope,
@@ -128,6 +168,84 @@ class SettingsViewModel(
         viewModelScope.launch {
             preferenceManager.setPinLock(enabled = false)
             _eventFlow.emit(SettingsEvent.ShowToast("Application PIN lock disabled."))
+        }
+    }
+
+    fun updateAiGatewayUrl(url: String) {
+        viewModelScope.launch {
+            preferenceManager.setAiGatewayUrl(url)
+        }
+    }
+
+    fun updateAiApiKey(key: String) {
+        viewModelScope.launch {
+            preferenceManager.setAiApiKey(key)
+        }
+    }
+
+    fun updateAiModel(model: String) {
+        viewModelScope.launch {
+            preferenceManager.setAiModel(model)
+        }
+    }
+
+    fun updateAiSystemPrompt(prompt: String) {
+        viewModelScope.launch {
+            preferenceManager.setAiSystemPrompt(prompt)
+        }
+    }
+
+    fun updateAiTemperature(temp: Float) {
+        viewModelScope.launch {
+            preferenceManager.setAiTemperature(temp)
+        }
+    }
+
+    fun toggleAutoRecordCalls(enabled: Boolean) {
+        viewModelScope.launch {
+            preferenceManager.setAutoRecordCalls(enabled)
+        }
+    }
+
+    fun toggleAutoSummarizeCalls(enabled: Boolean) {
+        viewModelScope.launch {
+            preferenceManager.setAutoSummarizeCalls(enabled)
+        }
+    }
+
+    fun updateDefaultVisitLeadTime(minutes: Int) {
+        viewModelScope.launch {
+            preferenceManager.setDefaultVisitLeadTime(minutes)
+        }
+    }
+
+    fun testAiGatewayConnection() {
+        if (aiClient == null) {
+            viewModelScope.launch {
+                _eventFlow.emit(SettingsEvent.ShowToast("AI Client not initialized"))
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _isTestingAiConnection.value = true
+            try {
+                val state = uiState.value
+                val result = aiClient.testConnection(
+                    customUrl = state.aiGatewayUrl,
+                    customKey = state.aiApiKey,
+                    customModel = state.aiModel
+                )
+                if (result.isSuccess) {
+                    _eventFlow.emit(SettingsEvent.ShowToast("✓ AI Gateway Connected! ${result.getOrNull()}"))
+                } else {
+                    _eventFlow.emit(SettingsEvent.ShowToast("✗ Connection Failed: ${result.exceptionOrNull()?.message}"))
+                }
+            } catch (e: Exception) {
+                _eventFlow.emit(SettingsEvent.ShowToast("Connection Error: ${e.message}"))
+            } finally {
+                _isTestingAiConnection.value = false
+            }
         }
     }
 

@@ -1,6 +1,10 @@
 package com.propertycrm.app
 
 import android.app.Application
+import com.propertycrm.app.ai.AICopilotEngine
+import com.propertycrm.app.ai.AIGatewayClient
+import com.propertycrm.app.ai.CallRecordingManager
+import com.propertycrm.app.ai.SmartDocumentImporter
 import com.propertycrm.app.data.local.AppDatabase
 import com.propertycrm.app.data.local.PreferenceManager
 import com.propertycrm.app.data.repository.BackupRepository
@@ -35,6 +39,18 @@ class PropertyCrmApp : Application() {
     lateinit var reminderNotificationManager: ReminderNotificationManager
         private set
 
+    lateinit var aiClient: AIGatewayClient
+        private set
+
+    lateinit var aiCopilotEngine: AICopilotEngine
+        private set
+
+    lateinit var smartDocumentImporter: SmartDocumentImporter
+        private set
+
+    lateinit var callRecordingManager: CallRecordingManager
+        private set
+
     override fun onCreate() {
         super.onCreate()
 
@@ -54,6 +70,12 @@ class PropertyCrmApp : Application() {
         // Initialize Notification & Scheduler
         reminderNotificationManager = ReminderNotificationManager(this)
         reminderScheduler = ReminderScheduler(this)
+
+        // Initialize AI Gateway, Copilot Agent, Ingestion & Call Recording
+        aiClient = AIGatewayClient(preferenceManager)
+        aiCopilotEngine = AICopilotEngine(aiClient, customerRepository, followUpRepository, database)
+        smartDocumentImporter = SmartDocumentImporter(this, aiClient, customerRepository)
+        callRecordingManager = CallRecordingManager(this, aiClient, customerRepository, preferenceManager)
 
         // Create Notification Channel
         reminderNotificationManager.createNotificationChannel()

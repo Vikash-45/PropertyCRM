@@ -211,6 +211,34 @@ class CustomerRepository(
         return visitId
     }
 
+    suspend fun scheduleSiteVisit(siteVisit: SiteVisit): Long {
+        return scheduleSiteVisit(
+            customerId = siteVisit.customerId,
+            propertyLocation = siteVisit.propertyLocation,
+            visitDate = siteVisit.visitDate,
+            visitTime = siteVisit.visitTime,
+            notes = siteVisit.notes
+        )
+    }
+
+    suspend fun recordInteraction(interaction: CustomerInteraction): Long {
+        return customerInteractionDao.insertInteraction(interaction)
+    }
+
+    suspend fun updateCustomerNotificationSettings(
+        customerId: Long,
+        leadTimeMinutes: Int,
+        enabled: Boolean,
+        customNotes: String?
+    ) {
+        customerDao.updateNotificationSettings(
+            id = customerId,
+            leadTimeMinutes = leadTimeMinutes,
+            enabled = enabled,
+            notes = customNotes
+        )
+    }
+
     suspend fun updateSiteVisitStatus(
         id: Long,
         customerId: Long,

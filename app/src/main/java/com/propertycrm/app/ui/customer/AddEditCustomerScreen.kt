@@ -29,6 +29,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -467,6 +469,73 @@ fun AddEditCustomerScreen(
                         onValueChange = { viewModel.onInitialFollowUpTimeChange(it) },
                         label = { Text("Time") },
                         modifier = Modifier.weight(1f),
+                        colors = getDarkTextFieldColors(),
+                        singleLine = true
+                    )
+                }
+            }
+
+            // Site Visit Notification Preferences Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                shape = RoundedCornerShape(12.dp),
+                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "Prior Visit Notifications", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(text = "Alarm alert before scheduled appointments", color = TextSecondary, fontSize = 11.sp)
+                        }
+                        Switch(
+                            checked = uiState.notificationsEnabled,
+                            onCheckedChange = { viewModel.onNotificationsEnabledToggle(it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = Color.Black, checkedTrackColor = PrimaryBlue)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(text = "Alert Lead Time Prior to Visit", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(15 to "15m", 30 to "30m", 60 to "1h", 120 to "2h", 1440 to "1d").forEach { (mins, label) ->
+                            val isSel = uiState.reminderLeadTimeMinutes == mins
+                            Button(
+                                onClick = { viewModel.onReminderLeadTimeChange(mins) },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isSel) PrimaryBlue else DarkSurfaceVariant
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp, horizontal = 2.dp)
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = if (isSel) Color.Black else TextSecondary,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedTextField(
+                        value = uiState.customNotificationNotes,
+                        onValueChange = { viewModel.onCustomNotificationNotesChange(it) },
+                        label = { Text("Custom Visit Reminder Notes") },
+                        placeholder = { Text("e.g. Bring key, check parking status") },
+                        modifier = Modifier.fillMaxWidth(),
                         colors = getDarkTextFieldColors(),
                         singleLine = true
                     )
