@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -99,6 +100,7 @@ import com.propertycrm.app.ui.components.MarkCompletedDialog
 import com.propertycrm.app.ui.components.RescheduleDialog
 import com.propertycrm.app.ui.components.StageChip
 import com.propertycrm.app.ui.components.StatusBadge
+import com.propertycrm.app.ui.components.WhatsAppTemplateDialog
 import com.propertycrm.app.ui.theme.DarkBackground
 import com.propertycrm.app.ui.theme.DarkBorder
 import com.propertycrm.app.ui.theme.DarkSurface
@@ -138,6 +140,7 @@ fun CustomerDetailScreen(
     var showCallOutcomeDialog by remember { mutableStateOf(false) }
     var showAddFollowUpDialog by remember { mutableStateOf(false) }
     var showScheduleVisitDialog by remember { mutableStateOf(false) }
+    var showWhatsAppTemplates by remember { mutableStateOf(false) }
     var activeRescheduleFollowUp by remember { mutableStateOf<FollowUp?>(null) }
     var activeCompleteFollowUp by remember { mutableStateOf<FollowUp?>(null) }
 
@@ -346,7 +349,7 @@ fun CustomerDetailScreen(
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            // Secondary Communication Row: WhatsApp & SMS
+                            // Secondary Communication Row: WhatsApp & SMS & Templates
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -359,18 +362,30 @@ fun CustomerDetailScreen(
                                 ) {
                                     Icon(imageVector = Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("WhatsApp", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text("WhatsApp", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+
+                                Button(
+                                    onClick = { showWhatsAppTemplates = true },
+                                    modifier = Modifier.weight(1.1f),
+                                    colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.Chat, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Templates", color = PrimaryBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 }
 
                                 Button(
                                     onClick = { PhoneUtils.sendSms(context, customer.phone) },
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier.weight(0.9f),
                                     colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
                                     shape = RoundedCornerShape(10.dp)
                                 ) {
                                     Icon(imageVector = Icons.Default.Edit, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Send SMS", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text("SMS", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 }
                             }
                         }
@@ -563,6 +578,18 @@ fun CustomerDetailScreen(
             onConfirm = { loc, date, time, notes ->
                 viewModel.scheduleSiteVisit(loc, date, time, notes)
                 showScheduleVisitDialog = false
+            }
+        )
+    }
+
+    // WhatsApp Message Templates Dialog
+    if (showWhatsAppTemplates && customer != null) {
+        WhatsAppTemplateDialog(
+            customer = customer,
+            onDismiss = { showWhatsAppTemplates = false },
+            onSend = { customMessage ->
+                showWhatsAppTemplates = false
+                PhoneUtils.openWhatsApp(context, customer.phone, customMessage)
             }
         )
     }

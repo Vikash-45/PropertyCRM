@@ -22,13 +22,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PhoneDisabled
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
+import com.propertycrm.app.data.model.Customer
+import com.propertycrm.app.data.model.PropertyType
+import com.propertycrm.app.data.model.RequirementType
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -735,6 +740,203 @@ fun PasswordPromptDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
             ) {
                 Text(confirmLabel, color = Color.Black, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = TextSecondary)
+            }
+        },
+        containerColor = DarkSurface,
+        shape = RoundedCornerShape(16.dp)
+    )
+}
+
+// Requirement Type Chip (BUY, SELL, RENT)
+@Composable
+fun RequirementTypeChip(
+    requirementType: RequirementType,
+    modifier: Modifier = Modifier
+) {
+    val (text, containerColor, contentColor) = when (requirementType) {
+        RequirementType.BUY -> Triple("BUY", Color(0xFF0D3822), Color(0xFF10B981))
+        RequirementType.SELL -> Triple("SELL", Color(0xFF331652), Color(0xFFA855F7))
+        RequirementType.RENT -> Triple("RENT", Color(0xFF0C3B4E), Color(0xFF06B6D4))
+    }
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(containerColor)
+            .border(1.dp, contentColor.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 7.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = contentColor,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+// Property Category Badge (Plot, Flat, House, Land, Commercial, Other)
+@Composable
+fun PropertyTypeBadge(
+    propertyType: PropertyType,
+    modifier: Modifier = Modifier
+) {
+    val (label, containerColor, contentColor) = when (propertyType) {
+        PropertyType.PLOT -> Triple("Plot", Color(0xFF3B2805), Color(0xFFF59E0B))
+        PropertyType.FLAT -> Triple("Flat", Color(0xFF13283E), Color(0xFF38BDF8))
+        PropertyType.HOUSE -> Triple("House", Color(0xFF221A3F), Color(0xFF818CF8))
+        PropertyType.LAND -> Triple("Land", Color(0xFF14301B), Color(0xFF4ADE80))
+        PropertyType.COMMERCIAL -> Triple("Commercial", Color(0xFF3D1F14), Color(0xFFFB923C))
+        PropertyType.OTHER -> Triple("Other", DarkSurfaceVariant, TextSecondary)
+    }
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(containerColor)
+            .padding(horizontal = 7.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = contentColor,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+// Pre-crafted Real Estate WhatsApp Templates Dialog
+@Composable
+fun WhatsAppTemplateDialog(
+    customer: Customer,
+    onDismiss: () -> Unit,
+    onSend: (message: String) -> Unit
+) {
+    val location = if (customer.preferredLocation.isNotBlank()) customer.preferredLocation else "your preferred area"
+    val propType = customer.propertyType.getDisplayName()
+    val budgetStr = if (!customer.budget.isNullOrBlank()) " within your budget of ₹${customer.budget}" else ""
+
+    val templates = remember(customer) {
+        listOf(
+            "Property Follow-up" to "Hello ${customer.name}, thank you for inquiring about $propType in $location$budgetStr. We have curated the top matching options for you. Would you like to review their details?",
+            "Site Visit Invitation" to "Dear ${customer.name}, we are organizing exclusive site visits to prime $propType projects in $location this week. Which day and time works best for you?",
+            "Brochures & Floor Plans" to "Hi ${customer.name}, sharing brochures and verified floor plans for $propType in $location. Let me know if you would like to schedule a walkthrough.",
+            "Pricing & Booking Check-in" to "Dear ${customer.name}, following up regarding our discussion on $propType in $location. Please feel free to reach out if you have questions or would like to discuss payment terms."
+        )
+    }
+
+    var selectedIndex by remember { mutableStateOf(0) }
+    var currentMessage by remember { mutableStateOf(templates[0].second) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Chat,
+                    contentDescription = null,
+                    tint = Color(0xFF25D366),
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "WhatsApp: ${customer.name}",
+                    color = TextPrimary,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = "Select a quick real estate template or customize before sending:",
+                    color = TextSecondary,
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                templates.forEachIndexed { index, (title, body) ->
+                    val isSelected = selectedIndex == index
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable {
+                                selectedIndex = index
+                                currentMessage = body
+                            },
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected) Color(0xFF13283E) else DarkSurfaceVariant
+                        ),
+                        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue) else null,
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                text = title,
+                                color = if (isSelected) PrimaryBlue else TextPrimary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = body,
+                                color = TextSecondary,
+                                fontSize = 11.sp,
+                                maxLines = if (isSelected) 5 else 2
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Editable Message Preview:",
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                OutlinedTextField(
+                    value = currentMessage,
+                    onValueChange = { currentMessage = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = Color(0xFF25D366),
+                        unfocusedBorderColor = DarkBorder
+                    ),
+                    maxLines = 5
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSend(currentMessage) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Send,
+                    contentDescription = null,
+                    tint = Color.Black,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Open WhatsApp", color = Color.Black, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {

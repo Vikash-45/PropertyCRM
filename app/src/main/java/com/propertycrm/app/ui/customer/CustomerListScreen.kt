@@ -1,7 +1,9 @@
 package com.propertycrm.app.ui.customer
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,15 +17,26 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +51,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,13 +65,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.propertycrm.app.R
 import com.propertycrm.app.data.model.Customer
+import com.propertycrm.app.data.model.CustomerStage
+import com.propertycrm.app.data.model.PropertyType
+import com.propertycrm.app.data.model.RequirementType
+import com.propertycrm.app.ui.components.DoNotCallBadge
 import com.propertycrm.app.ui.components.EmptyStateCard
+import com.propertycrm.app.ui.components.PropertyTypeBadge
+import com.propertycrm.app.ui.components.RequirementTypeChip
 import com.propertycrm.app.ui.components.StageChip
+import com.propertycrm.app.ui.components.WhatsAppTemplateDialog
 import com.propertycrm.app.ui.theme.DarkBackground
 import com.propertycrm.app.ui.theme.DarkBorder
 import com.propertycrm.app.ui.theme.DarkSurface
 import com.propertycrm.app.ui.theme.DarkSurfaceVariant
 import com.propertycrm.app.ui.theme.PrimaryBlue
+import com.propertycrm.app.ui.theme.StatusCompleted
+import com.propertycrm.app.ui.theme.StatusOverdue
 import com.propertycrm.app.ui.theme.TextPrimary
 import com.propertycrm.app.ui.theme.TextSecondary
 import com.propertycrm.app.ui.theme.getDarkTextFieldColors
@@ -71,7 +96,13 @@ fun CustomerListScreen(
     val customers by viewModel.customers.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val showArchived by viewModel.showArchived.collectAsState()
+    val selectedPropertyType by viewModel.selectedPropertyType.collectAsState()
+    val selectedRequirementType by viewModel.selectedRequirementType.collectAsState()
+    val selectedStage by viewModel.selectedStage.collectAsState()
+    val stats by viewModel.stats.collectAsState()
+
     val context = LocalContext.current
+    var customerForWhatsAppTemplates by remember { mutableStateOf<Customer?>(null) }
 
     Scaffold(
         containerColor = DarkBackground,
@@ -97,19 +128,91 @@ fun CustomerListScreen(
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.customers),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = stringResource(R.string.customers),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "${stats.totalActive} Total Clients Registered",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+
+                if (viewModel.hasActiveFilters()) {
+                    Button(
+                        onClick = { viewModel.clearFilters() },
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
+                        shape = RoundedCornerShape(20.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = null, tint = StatusOverdue, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "Reset Filters", color = StatusOverdue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Quick Metrics Summary Cards Row (Total, Buy, Sell, Rent)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SummaryStatCard(
+                    title = "Buy",
+                    count = stats.buyCount,
+                    isSelected = selectedRequirementType == RequirementType.BUY,
+                    accentColor = Color(0xFF10B981),
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        viewModel.setSelectedRequirementType(
+                            if (selectedRequirementType == RequirementType.BUY) null else RequirementType.BUY
+                        )
+                    }
+                )
+                SummaryStatCard(
+                    title = "Sell",
+                    count = stats.sellCount,
+                    isSelected = selectedRequirementType == RequirementType.SELL,
+                    accentColor = Color(0xFFA855F7),
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        viewModel.setSelectedRequirementType(
+                            if (selectedRequirementType == RequirementType.SELL) null else RequirementType.SELL
+                        )
+                    }
+                )
+                SummaryStatCard(
+                    title = "Rent",
+                    count = stats.rentCount,
+                    isSelected = selectedRequirementType == RequirementType.RENT,
+                    accentColor = Color(0xFF06B6D4),
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        viewModel.setSelectedRequirementType(
+                            if (selectedRequirementType == RequirementType.RENT) null else RequirementType.RENT
+                        )
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Search Bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { viewModel.onSearchQueryChange(it) },
-                placeholder = { Text("Search by name, phone, or location...") },
+                placeholder = { Text("Search by name, phone, location, budget...") },
                 leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = TextSecondary) },
                 trailingIcon = {
                     if (searchQuery.isNotBlank()) {
@@ -124,9 +227,100 @@ fun CustomerListScreen(
                 shape = RoundedCornerShape(12.dp)
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Tabs: Active vs Archived
+            // Property Category / Type Filter Chips (Horizontal Scrollable)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // "All Categories" chip
+                FilterChip(
+                    selected = selectedPropertyType == null,
+                    onClick = { viewModel.setSelectedPropertyType(null) },
+                    label = { Text("All Categories (${stats.totalActive})", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = PrimaryBlue,
+                        selectedLabelColor = Color.Black,
+                        containerColor = DarkSurface,
+                        labelColor = TextSecondary
+                    )
+                )
+
+                // Category types: Plot, Flat, House, Land, Commercial, Other
+                PropertyType.values().forEach { type ->
+                    val isSelected = selectedPropertyType == type
+                    val count = stats.categoryCounts[type] ?: 0
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = {
+                            viewModel.setSelectedPropertyType(if (isSelected) null else type)
+                        },
+                        label = {
+                            Text(
+                                text = "${type.getDisplayName()} ($count)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = PrimaryBlue,
+                            selectedLabelColor = Color.Black,
+                            containerColor = DarkSurface,
+                            labelColor = TextSecondary
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Customer Stage / Status Filter Chips (Horizontal Scrollable)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "Stage:", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+
+                FilterChip(
+                    selected = selectedStage == null,
+                    onClick = { viewModel.setSelectedStage(null) },
+                    label = { Text("All Stages", fontSize = 11.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = PrimaryBlue,
+                        selectedLabelColor = Color.Black,
+                        containerColor = DarkSurface,
+                        labelColor = TextSecondary
+                    )
+                )
+
+                CustomerStage.values().forEach { stage ->
+                    val isSelected = selectedStage == stage
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = {
+                            viewModel.setSelectedStage(if (isSelected) null else stage)
+                        },
+                        label = { Text(stage.getDisplayName(), fontSize = 11.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = PrimaryBlue,
+                            selectedLabelColor = Color.Black,
+                            containerColor = DarkSurface,
+                            labelColor = TextSecondary
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Tabs: Active Customers vs Archived
             TabRow(
                 selectedTabIndex = if (showArchived) 1 else 0,
                 containerColor = DarkBackground,
@@ -141,34 +335,39 @@ fun CustomerListScreen(
                 Tab(
                     selected = !showArchived,
                     onClick = { viewModel.setShowArchived(false) },
-                    text = { Text("Active Customers", color = if (!showArchived) PrimaryBlue else TextSecondary, fontWeight = FontWeight.SemiBold) }
+                    text = { Text("Active Customers (${customers.size})", color = if (!showArchived) PrimaryBlue else TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp) }
                 )
                 Tab(
                     selected = showArchived,
                     onClick = { viewModel.setShowArchived(true) },
-                    text = { Text("Archived", color = if (showArchived) PrimaryBlue else TextSecondary, fontWeight = FontWeight.SemiBold) }
+                    text = { Text("Archived", color = if (showArchived) PrimaryBlue else TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp) }
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             if (customers.isEmpty()) {
                 EmptyStateCard(
-                    title = if (searchQuery.isNotBlank()) "No Matching Customers" else "No Customers Yet",
-                    message = if (searchQuery.isNotBlank()) "Try searching with a different name or phone number." else "Start by registering your first property client.",
+                    title = if (viewModel.hasActiveFilters()) "No Matching Customers" else "No Customers Yet",
+                    message = if (viewModel.hasActiveFilters()) "Try clearing your filters or search keywords." else "Start by registering your first property client.",
                     icon = Icons.Default.People,
-                    actionLabel = if (searchQuery.isBlank()) stringResource(R.string.add_customer) else null,
-                    onActionClick = onNavigateToAddCustomer
+                    actionLabel = if (!viewModel.hasActiveFilters()) stringResource(R.string.add_customer) else "Reset Filters",
+                    onActionClick = {
+                        if (viewModel.hasActiveFilters()) viewModel.clearFilters()
+                        else onNavigateToAddCustomer()
+                    }
                 )
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(customers) { customer ->
+                    items(customers, key = { it.id }) { customer ->
                         CustomerListItemCard(
                             customer = customer,
                             onCallClick = { PhoneUtils.dialCustomer(context, customer.phone) },
+                            onWhatsAppClick = { PhoneUtils.openWhatsApp(context, customer.phone) },
+                            onTemplateClick = { customerForWhatsAppTemplates = customer },
                             onClick = { onNavigateToCustomerDetail(customer.id) }
                         )
                     }
@@ -179,12 +378,66 @@ fun CustomerListScreen(
             }
         }
     }
+
+    // Quick WhatsApp Message Templates Dialog
+    customerForWhatsAppTemplates?.let { customer ->
+        WhatsAppTemplateDialog(
+            customer = customer,
+            onDismiss = { customerForWhatsAppTemplates = null },
+            onSend = { customMessage ->
+                customerForWhatsAppTemplates = null
+                PhoneUtils.openWhatsApp(context, customer.phone, customMessage)
+            }
+        )
+    }
+}
+
+@Composable
+fun SummaryStatCard(
+    title: String,
+    count: Int,
+    isSelected: Boolean,
+    accentColor: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) accentColor.copy(alpha = 0.2f) else DarkSurface
+        ),
+        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, accentColor) else CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = count.toString(),
+                color = if (isSelected) accentColor else TextPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = title,
+                color = TextSecondary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
 }
 
 @Composable
 fun CustomerListItemCard(
     customer: Customer,
     onCallClick: () -> Unit,
+    onWhatsAppClick: () -> Unit,
+    onTemplateClick: () -> Unit,
     onClick: () -> Unit
 ) {
     Card(
@@ -196,6 +449,28 @@ fun CustomerListItemCard(
         border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
+            // Header Row: Badges (Requirement Type + Property Category + Stage)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RequirementTypeChip(requirementType = customer.requirementType)
+                    PropertyTypeBadge(propertyType = customer.propertyType)
+                    if (customer.isDoNotCall) {
+                        DoNotCallBadge()
+                    }
+                }
+                StageChip(stage = customer.stage)
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Customer Name & Phone
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -211,54 +486,98 @@ fun CustomerListItemCard(
                     Text(
                         text = customer.phone,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = PrimaryBlue
+                        color = PrimaryBlue,
+                        fontWeight = FontWeight.Medium
                     )
                 }
-                StageChip(stage = customer.stage)
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "View Details",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(18.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Location & Budget Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(DarkSurfaceVariant)
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = customer.propertyType.getDisplayName(),
-                        color = TextSecondary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
                 if (customer.preferredLocation.isNotBlank()) {
-                    Text(
-                        text = "• ${customer.preferredLocation}",
-                        color = TextSecondary,
-                        fontSize = 12.sp,
-                        maxLines = 1
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(DarkSurfaceVariant)
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = PrimaryBlue,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = customer.preferredLocation,
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                if (!customer.budget.isNullOrBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFF352B10))
+                            .border(1.dp, Color(0xFFFBBF24).copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "₹${customer.budget}",
+                            color = Color(0xFFFBBF24),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                if (!customer.leadSource.isNullOrBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(DarkSurfaceVariant)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = customer.leadSource,
+                            color = TextSecondary,
+                            fontSize = 10.sp
+                        )
+                    }
                 }
             }
 
+            // Inquiry Need / Requirement Note
             if (customer.inquiryReason.isNotBlank()) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = customer.inquiryReason,
-                    color = TextPrimary,
-                    fontSize = 13.sp,
+                    color = TextPrimary.copy(alpha = 0.9f),
+                    fontSize = 12.sp,
                     maxLines = 2
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
+            // Bottom Actions Bar: Added Date + Quick Communication Suite (Call, WhatsApp, Templates)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -269,14 +588,58 @@ fun CustomerListItemCard(
                     color = TextSecondary,
                     fontSize = 11.sp
                 )
-                IconButton(
-                    onClick = onCallClick,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(PrimaryBlue)
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(imageVector = Icons.Default.Call, contentDescription = "Call", tint = Color.Black, modifier = Modifier.size(18.dp))
+                    // Quick WhatsApp Direct Button
+                    IconButton(
+                        onClick = onWhatsAppClick,
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF25D366))
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "WhatsApp",
+                            tint = Color.Black,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    // Quick WhatsApp Templates Button
+                    IconButton(
+                        onClick = onTemplateClick,
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(DarkSurfaceVariant)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Chat,
+                            contentDescription = "WhatsApp Templates",
+                            tint = PrimaryBlue,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    // Direct Phone Call Button
+                    IconButton(
+                        onClick = onCallClick,
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(PrimaryBlue)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Call,
+                            contentDescription = "Call",
+                            tint = Color.Black,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }

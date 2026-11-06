@@ -77,18 +77,39 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             PropertyCRMTheme {
-                val isPinLockEnabled by appContainer.preferenceManager.isPinLockEnabled.collectAsState(initial = false)
+                val isPinLockEnabled by appContainer.preferenceManager.isPinLockEnabled.collectAsState(initial = null)
                 val pinHash by appContainer.preferenceManager.pinHash.collectAsState(initial = null)
                 val pinSalt by appContainer.preferenceManager.pinSalt.collectAsState(initial = null)
 
-                var isUnlocked by remember { mutableStateOf(!isPinLockEnabled) }
+                var sessionUnlocked by remember { mutableStateOf(false) }
 
-                if (isPinLockEnabled && !isUnlocked && pinHash != null && pinSalt != null) {
-                    PinUnlockScreen(
-                        targetHash = pinHash!!,
-                        salt = pinSalt!!,
-                        onUnlocked = { isUnlocked = true }
-                    )
+                if (isPinLockEnabled == null) {
+                    // Loading preferences from DataStore
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(DarkBackground),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        androidx.compose.material3.CircularProgressIndicator(color = PrimaryBlue)
+                    }
+                } else if (isPinLockEnabled == true && !sessionUnlocked) {
+                    if (pinHash != null && pinSalt != null) {
+                        PinUnlockScreen(
+                            targetHash = pinHash!!,
+                            salt = pinSalt!!,
+                            onUnlocked = { sessionUnlocked = true }
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(DarkBackground),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            androidx.compose.material3.CircularProgressIndicator(color = PrimaryBlue)
+                        }
+                    }
                 } else {
                     val navController = rememberNavController()
                     val activeIntent by currentIntentState
