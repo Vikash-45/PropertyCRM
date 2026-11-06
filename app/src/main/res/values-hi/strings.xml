@@ -1,0 +1,110 @@
+<resources>
+    <string name="app_name">प्रॉपर्टी फॉलो-अप CRM</string>
+    <string name="dashboard">डैशबोर्ड</string>
+    <string name="customers">ग्राहक</string>
+    <string name="follow_ups">फॉलो-अप</string>
+    <string name="settings">सेटिंग्स</string>
+
+    <!-- Dashboard -->
+    <string name="active_customers">सक्रिय ग्राहक</string>
+    <string name="today_pending">आज के कॉल</string>
+    <string name="overdue">बाकी (ओवरड्यू)</string>
+    <string name="upcoming">आगामी</string>
+    <string name="completed">पूर्ण</string>
+    <string name="quick_actions">त्वरित कार्य</string>
+    <string name="add_customer">नया ग्राहक जोड़ें</string>
+    <string name="todays_followups">आज के फॉलो-अप</string>
+    <string name="no_followups_today">आज कोई फॉलो-अप नहीं है! बहुत बढ़िया।</string>
+
+    <!-- Customer Form -->
+    <string name="add_new_customer">नया ग्राहक विवरण</string>
+    <string name="edit_customer">ग्राहक विवरण बदलें</string>
+    <string name="customer_name">ग्राहक का नाम *</string>
+    <string name="customer_phone">फ़ोन नंबर *</string>
+    <string name="inquiry_reason">पूछताछ का कारण / आवश्यकता *</string>
+    <string name="property_type">प्रॉपर्टी का प्रकार</string>
+    <string name="preferred_location">पसंदीदा स्थान</string>
+    <string name="budget">बजट</string>
+    <string name="lead_source">कहाँ से संपर्क हुआ (लीड स्रोत)</string>
+    <string name="first_visit_date">पहली मुलाक़ात की तारीख</string>
+    <string name="initial_followup_date">फॉलो-अप की तारीख</string>
+    <string name="initial_followup_time">फॉलो-अप का समय</string>
+    <string name="stage">ग्राहक स्थिति (स्टेज)</string>
+    <string name="notes">टिप्पणी / विवरण</string>
+    <string name="save">सुरक्षित करें (Save)</string>
+    <string name="cancel">रद्द करें</string>
+    <string name="delete">हटाएं</string>
+    <string name="archive">संग्रहीत करें (Archive)</string>
+    <string name="unarchive">पुनः सक्रिय करें</string>
+    <string name="duplicate_phone_warning">चेतावनी: इस फ़ोन नंबर वाला ग्राहक पहले से मौजूद है!</string>
+    <string name="error_required_fields">कृपया सभी आवश्यक फ़ील्ड (नाम, फ़ोन, पूछताछ) भरें।</string>
+
+    <!-- Property Types -->
+    <string name="property_plot">प्लॉट</string>
+    <string name="property_flat">फ्लैट</string>
+    <string name="property_house">मकान</string>
+    <string name="property_land">जमीन</string>
+    <string name="property_commercial">कमर्शियल</string>
+    <string name="property_other">अन्य</string>
+
+    <!-- Customer Stages -->
+    <string name="stage_new">नया (New)</string>
+    <string name="stage_contacted">बातचीत हुई (Contacted)</string>
+    <string name="stage_site_visit">साइट विज़िट (Site Visit)</string>
+    <string name="stage_negotiation">सौदा बातचीत (Negotiation)</string>
+    <string name="stage_won">सौदा पक्का (Won)</string>
+    <string name="stage_lost">सौदा रद्द (Lost)</string>
+
+    <!-- Follow-up Filters & Status -->
+    <string name="filter_today">आज</string>
+    <string name="filter_overdue">छूटे हुए (Overdue)</string>
+    <string name="filter_upcoming">आने वाले</string>
+    <string name="filter_completed">संपन्न</string>
+    <string name="filter_all">सभी</string>
+    <string name="status_pending">लंबित</string>
+    <string name="status_completed">पूर्ण हुआ</string>
+    <string name="status_cancelled">रद्द</string>
+
+    <!-- Actions -->
+    <string name="call_customer">कॉल करें</string>
+    <string name="mark_completed">पूर्ण करें</string>
+    <string name="reschedule">तारीख बदलें</string>
+    <string name="add_followup">नया फॉलो-अप जोड़ें</string>
+    <string name="view_details">विवरण देखें</string>
+    <string name="completion_notes">समाप्ति टिप्पणी (वैकल्पिक)</string>
+    <string name="reschedule_date">नई तारीख</string>
+    <string name="reschedule_time">नया समय</string>
+    <string name="reschedule_notes">कारण / टिप्पणी</string>
+
+    <!-- Details -->
+    <string name="customer_details">ग्राहक का सम्पूर्ण विवरण</string>
+    <string name="followup_history">फॉलो-अप इतिहास</string>
+    <string name="no_followup_history">कोई पिछला फॉलो-अप रिकॉर्ड नहीं मिला।</string>
+    <string name="confirm_delete_customer">क्या आप इस ग्राहक और इनके सभी फॉलो-अप को हटाना चाहते हैं?</string>
+
+    <!-- Settings -->
+    <string name="notifications_reminders">सूचनाएं और अनुस्मारक</string>
+    <string name="enable_daily_reminders">दैनिक रिमाइंडर चालू रखें</string>
+    <string name="reminder_time">दैनिक रिमाइंडर समय</string>
+    <string name="notification_permission">नोटिफिकेशन अनुमति</string>
+    <string name="exact_alarm_permission">सटीक अलार्म अनुमति</string>
+    <string name="granted">स्वीकृत</string>
+    <string name="not_granted">अस्वीकृत (लगभग समय पर रिमाइंडर मिलेगा)</string>
+    <string name="request_permission">अनुमति दें</string>
+    <string name="test_notification">अभी टेस्ट नोटिफिकेशन भेजें</string>
+    <string name="data_backup_export">डेटा बैकअप एवं रिस्टोर</string>
+    <string name="export_csv">ग्राहकों को CSV में निकालें (Excel)</string>
+    <string name="export_json">पूरा डेटा बैकअप लें (JSON)</string>
+    <string name="import_json">JSON से डेटा रिस्टोर करें</string>
+    <string name="about_app">प्रॉपर्टी CRM के बारे में</string>
+    <string name="about_app_desc">100% ऑफ़लाइन CRM प्रॉपर्टी डीलरों और रियल एस्टेट सलाहकारों के लिए। कभी भी ग्राहक फॉलो-अप न भूलें।</string>
+
+    <!-- Notification Strings -->
+    <string name="notification_channel_name">प्रॉपर्टी फॉलो-अप रिमाइंडर</string>
+    <string name="notification_channel_desc">ग्राहकों को समय पर कॉल करने के दैनिक रिमाइंडर।</string>
+    <string name="notification_title">प्रॉपर्टी फॉलो-अप अनुस्मारक</string>
+    <string name="notification_body_format">%1$d ग्राहकों से आज बात करनी है। %2$d पुराने फॉलो-अप छूटे हुए हैं।</string>
+    <string name="notification_body_today_only">%1$d ग्राहकों से आज बात करनी है।</string>
+    <string name="notification_body_overdue_only">%1$d पुराने फॉलो-अप बाकी हैं।</string>
+    <string name="notification_action_open">फॉलो-अप देखें</string>
+</resources>
