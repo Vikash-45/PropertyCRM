@@ -53,6 +53,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -621,6 +622,60 @@ fun CustomerDetailScreen(
                 activeCompleteFollowUp = null
             }
         )
+    }
+}
+
+@Composable
+fun FollowUpTimelineCard(
+    followUp: FollowUp,
+    onComplete: () -> Unit,
+    onReschedule: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        shape = RoundedCornerShape(12.dp),
+        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(DarkBorder))
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                StatusBadge(status = followUp.status, dueDateMillis = followUp.followUpDate)
+                Text(
+                    text = "${DateUtils.formatDate(followUp.followUpDate)}${if (!followUp.followUpTime.isNullOrBlank()) " at ${followUp.followUpTime}" else ""}",
+                    color = TextSecondary,
+                    fontSize = 12.sp
+                )
+            }
+
+            if (followUp.notes.isNotBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = followUp.notes, color = TextPrimary, fontSize = 13.sp)
+            }
+
+            if (followUp.status == FollowUpStatus.PENDING) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onReschedule) {
+                        Text(text = "Reschedule", color = PrimaryBlue, fontSize = 12.sp)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = onComplete,
+                        colors = ButtonDefaults.buttonColors(containerColor = StatusCompleted),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(text = "Complete", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
     }
 }
 

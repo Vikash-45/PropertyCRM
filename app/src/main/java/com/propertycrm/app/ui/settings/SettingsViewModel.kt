@@ -78,9 +78,9 @@ class SettingsViewModel(
             reminderMinute = p1.min,
             appLanguage = p1.lang,
             isExactAlarmPermitted = reminderScheduler.canScheduleExactAlarms(),
-            isPinLockEnabled = p1.pinLock,
-            lastBackupTime = p1.lastBackup,
-            lastRestoreTime = p1.lastRestore,
+            isPinLockEnabled = p2.pinLock,
+            lastBackupTime = p2.lastBackup,
+            lastRestoreTime = p2.lastRestore,
             isOperationRunning = p2.opRunning
         )
     }.stateIn(
