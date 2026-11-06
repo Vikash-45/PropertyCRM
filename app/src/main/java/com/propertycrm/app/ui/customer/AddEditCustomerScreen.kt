@@ -73,6 +73,7 @@ import com.propertycrm.app.ui.theme.DarkSurfaceVariant
 import com.propertycrm.app.ui.theme.PrimaryBlue
 import com.propertycrm.app.ui.theme.StatusOverdue
 import com.propertycrm.app.ui.theme.StatusUpcoming
+import com.propertycrm.app.ui.theme.getDarkTextFieldColors
 import com.propertycrm.app.ui.theme.StatusUpcomingBg
 import com.propertycrm.app.ui.theme.TextPrimary
 import com.propertycrm.app.ui.theme.TextSecondary

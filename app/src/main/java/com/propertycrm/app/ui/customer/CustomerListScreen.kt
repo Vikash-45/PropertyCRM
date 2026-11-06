@@ -58,6 +58,7 @@ import com.propertycrm.app.ui.theme.DarkSurfaceVariant
 import com.propertycrm.app.ui.theme.PrimaryBlue
 import com.propertycrm.app.ui.theme.TextPrimary
 import com.propertycrm.app.ui.theme.TextSecondary
+import com.propertycrm.app.ui.theme.getDarkTextFieldColors
 import com.propertycrm.app.util.DateUtils
 import com.propertycrm.app.util.PhoneUtils
 

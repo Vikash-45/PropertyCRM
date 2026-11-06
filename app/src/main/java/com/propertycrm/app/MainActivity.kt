@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
 import com.propertycrm.app.notification.ReminderNotificationManager
-import com.propertycrm.app.ui.customer.getDarkTextFieldColors
 import com.propertycrm.app.ui.navigation.AppNavigation
 import com.propertycrm.app.ui.navigation.Screen
 import com.propertycrm.app.ui.theme.DarkBackground
@@ -55,6 +54,7 @@ import com.propertycrm.app.ui.theme.PropertyCRMTheme
 import com.propertycrm.app.ui.theme.StatusOverdue
 import com.propertycrm.app.ui.theme.TextPrimary
 import com.propertycrm.app.ui.theme.TextSecondary
+import com.propertycrm.app.ui.theme.getDarkTextFieldColors
 import com.propertycrm.app.util.SecurityUtils
 
 class MainActivity : ComponentActivity() {
@@ -99,7 +99,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
     }

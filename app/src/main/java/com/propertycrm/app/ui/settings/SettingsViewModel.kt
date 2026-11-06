@@ -51,26 +51,37 @@ class SettingsViewModel(
 
     private val _isOperationRunning = MutableStateFlow(false)
 
-    val uiState: StateFlow<SettingsUiState> = combine(
+    private data class PrefGroup1(val enabled: Boolean, val hour: Int, val min: Int, val lang: String)
+    private data class PrefGroup2(val pinLock: Boolean, val lastBackup: Long?, val lastRestore: Long?, val opRunning: Boolean)
+
+    private val prefFlow1 = combine(
         preferenceManager.isReminderEnabled,
         preferenceManager.reminderHour,
         preferenceManager.reminderMinute,
-        preferenceManager.appLanguage,
+        preferenceManager.appLanguage
+    ) { enabled, hour, min, lang -> PrefGroup1(enabled, hour, min, lang) }
+
+    private val prefFlow2 = combine(
         preferenceManager.isPinLockEnabled,
         preferenceManager.lastBackupTime,
         preferenceManager.lastRestoreTime,
         _isOperationRunning
-    ) { enabled, hour, min, lang, pinLock, lastBackup, lastRestore, opRunning ->
+    ) { pinLock, lastBackup, lastRestore, opRunning -> PrefGroup2(pinLock, lastBackup, lastRestore, opRunning) }
+
+    val uiState: StateFlow<SettingsUiState> = combine(
+        prefFlow1,
+        prefFlow2
+    ) { p1, p2 ->
         SettingsUiState(
-            isReminderEnabled = enabled,
-            reminderHour = hour,
-            reminderMinute = min,
-            appLanguage = lang,
+            isReminderEnabled = p1.enabled,
+            reminderHour = p1.hour,
+            reminderMinute = p1.min,
+            appLanguage = p1.lang,
             isExactAlarmPermitted = reminderScheduler.canScheduleExactAlarms(),
-            isPinLockEnabled = pinLock,
-            lastBackupTime = lastBackup,
-            lastRestoreTime = lastRestore,
-            isOperationRunning = opRunning
+            isPinLockEnabled = p1.pinLock,
+            lastBackupTime = p1.lastBackup,
+            lastRestoreTime = p1.lastRestore,
+            isOperationRunning = p2.opRunning
         )
     }.stateIn(
         scope = viewModelScope,

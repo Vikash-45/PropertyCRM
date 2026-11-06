@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -60,7 +61,7 @@ fun AppNavigation(
                 NavigationBar(
                     containerColor = DarkSurface,
                     contentColor = PrimaryBlue,
-                    tonalElevation = androidx.compose.ui.unit.dp(4)
+                    tonalElevation = 4.dp
                 ) {
                     Screen.bottomNavItems.forEach { screen ->
                         val selected = when (screen) {

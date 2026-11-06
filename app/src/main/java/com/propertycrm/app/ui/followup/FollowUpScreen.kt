@@ -55,12 +55,12 @@ import androidx.compose.ui.unit.sp
 import com.propertycrm.app.R
 import com.propertycrm.app.data.model.FollowUpStatus
 import com.propertycrm.app.data.model.FollowUpWithCustomer
+import com.propertycrm.app.ui.components.AddFollowUpDialog
 import com.propertycrm.app.ui.components.EmptyStateCard
 import com.propertycrm.app.ui.components.MarkCompletedDialog
 import com.propertycrm.app.ui.components.RescheduleDialog
 import com.propertycrm.app.ui.components.StageChip
 import com.propertycrm.app.ui.components.StatusBadge
-import com.propertycrm.app.ui.customer.AddFollowUpDialog
 import com.propertycrm.app.ui.theme.DarkBackground
 import com.propertycrm.app.ui.theme.DarkBorder
 import com.propertycrm.app.ui.theme.DarkSurface

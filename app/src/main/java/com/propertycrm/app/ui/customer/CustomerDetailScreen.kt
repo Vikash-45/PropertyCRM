@@ -87,6 +87,7 @@ import com.propertycrm.app.data.model.FollowUp
 import com.propertycrm.app.data.model.FollowUpStatus
 import com.propertycrm.app.data.model.InteractionType
 import com.propertycrm.app.data.model.SiteVisit
+import com.propertycrm.app.ui.components.AddFollowUpDialog
 import com.propertycrm.app.ui.components.CallOutcomeDialog
 import com.propertycrm.app.ui.components.DoNotCallBadge
 import com.propertycrm.app.ui.components.EmptyStateCard
@@ -903,5 +904,19 @@ fun ScheduleSiteVisitDialog(
             setOnDismissListener { showDatePicker = false }
             show()
         }
+    }
+}
+
+@Composable
+private fun DetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label, color = TextSecondary, fontSize = 13.sp)
+        Text(text = value, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
     }
 }

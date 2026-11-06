@@ -484,6 +484,117 @@ fun RescheduleDialog(
     }
 }
 
+// Add Follow-up Dialog
+@Composable
+fun AddFollowUpDialog(
+    initialDateMillis: Long = System.currentTimeMillis() + 86400000L,
+    onDismiss: () -> Unit,
+    onConfirm: (dateMillis: Long, time: String?, notes: String) -> Unit
+) {
+    var selectedDateMillis by remember { mutableStateOf(initialDateMillis) }
+    var selectedTime by remember { mutableStateOf("") }
+    var notesText by remember { mutableStateOf("") }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Add Follow-up Task", color = TextPrimary) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Schedule a new follow-up call or task for this customer.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedButton(
+                    onClick = { showDatePicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+                ) {
+                    Icon(imageVector = Icons.Default.CalendarToday, contentDescription = null, tint = PrimaryBlue)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Date: ${DateUtils.formatDate(selectedDateMillis)}")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = selectedTime,
+                    onValueChange = { selectedTime = it },
+                    label = { Text("Time (e.g. 02:00 PM)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = PrimaryBlue,
+                        unfocusedBorderColor = DarkBorder
+                    ),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = notesText,
+                    onValueChange = { notesText = it },
+                    label = { Text("Task Notes") },
+                    placeholder = { Text("e.g. Send brochures / discuss pricing") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = PrimaryBlue,
+                        unfocusedBorderColor = DarkBorder
+                    ),
+                    maxLines = 3
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onConfirm(selectedDateMillis, selectedTime.takeIf { it.isNotBlank() }, notesText)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+            ) {
+                Text(text = "Schedule Task", color = Color.Black, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "Cancel", color = TextSecondary)
+            }
+        },
+        containerColor = DarkSurface,
+        shape = RoundedCornerShape(16.dp)
+    )
+
+    if (showDatePicker) {
+        val calendar = java.util.Calendar.getInstance().apply { timeInMillis = selectedDateMillis }
+        val context = LocalContext.current
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val newCal = java.util.Calendar.getInstance().apply {
+                    set(year, month, dayOfMonth, 0, 0, 0)
+                    set(java.util.Calendar.MILLISECOND, 0)
+                }
+                selectedDateMillis = newCal.timeInMillis
+                showDatePicker = false
+            },
+            calendar.get(java.util.Calendar.YEAR),
+            calendar.get(java.util.Calendar.MONTH),
+            calendar.get(java.util.Calendar.DAY_OF_MONTH)
+        ).apply {
+            setOnDismissListener { showDatePicker = false }
+            show()
+        }
+    }
+}
+
 // Mark Completed Dialog
 @Composable
 fun MarkCompletedDialog(

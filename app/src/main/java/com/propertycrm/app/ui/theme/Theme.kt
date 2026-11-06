@@ -3,12 +3,29 @@ package com.propertycrm.app.ui.theme
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+
+@Composable
+fun getDarkTextFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = TextPrimary,
+    unfocusedTextColor = TextPrimary,
+    focusedContainerColor = DarkSurface,
+    unfocusedContainerColor = DarkSurface,
+    cursorColor = PrimaryBlue,
+    focusedBorderColor = PrimaryBlue,
+    unfocusedBorderColor = DarkBorder,
+    focusedLabelColor = PrimaryBlue,
+    unfocusedLabelColor = TextSecondary,
+    focusedPlaceholderColor = TextMuted,
+    unfocusedPlaceholderColor = TextMuted
+)
 
 private val DarkColorScheme = darkColorScheme(
     primary = PrimaryBlue,
