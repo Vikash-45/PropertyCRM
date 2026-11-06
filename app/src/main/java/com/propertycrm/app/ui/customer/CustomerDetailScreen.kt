@@ -643,7 +643,7 @@ fun FollowUpTimelineCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                StatusBadge(status = followUp.status, dueDateMillis = followUp.followUpDate)
+                StatusBadge(status = followUp.status, dateMillis = followUp.followUpDate)
                 Text(
                     text = "${DateUtils.formatDate(followUp.followUpDate)}${if (!followUp.followUpTime.isNullOrBlank()) " at ${followUp.followUpTime}" else ""}",
                     color = TextSecondary,
