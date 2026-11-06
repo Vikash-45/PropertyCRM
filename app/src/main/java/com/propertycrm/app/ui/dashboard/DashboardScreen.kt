@@ -266,7 +266,6 @@ fun DashboardScreen(
                             }
                         },
                         onRecordOutcomeClick = { activeCallOutcomeItem = item },
-                        onCompleteClick = { activeCompleteItem = item },
                         onRescheduleClick = { activeRescheduleItem = item },
                         onClick = { onNavigateToCustomerDetail(item.customer.id) }
                     )
@@ -460,7 +459,6 @@ fun DashboardFollowUpCard(
     item: FollowUpWithCustomer,
     onCallClick: () -> Unit,
     onRecordOutcomeClick: () -> Unit,
-    onCompleteClick: () -> Unit,
     onRescheduleClick: () -> Unit,
     onClick: () -> Unit
 ) {

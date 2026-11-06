@@ -68,7 +68,6 @@ class ReminderNotificationManager(private val context: Context) {
 
         val summary = repository.getNotificationSummary()
         val totalPendingTasks = summary.totalTodayTasks + summary.totalOverdueTasks
-        val totalUniqueCustomers = summary.uniqueTodayCustomers + summary.uniqueOverdueCustomers
 
         // Suppress notification if 0 eligible tasks (Item 10)
         if (!forceShowTest && totalPendingTasks == 0) {

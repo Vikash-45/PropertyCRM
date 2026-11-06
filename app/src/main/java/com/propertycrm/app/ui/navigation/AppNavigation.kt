@@ -110,10 +110,12 @@ fun AppNavigation(
         ) {
             // Screen 1: Dashboard
             composable(Screen.Dashboard.route) {
-                val vm = DashboardViewModel(
-                    customerRepository = appContainer.customerRepository,
-                    followUpRepository = appContainer.followUpRepository
-                )
+                val vm = androidx.compose.runtime.remember {
+                    DashboardViewModel(
+                        customerRepository = appContainer.customerRepository,
+                        followUpRepository = appContainer.followUpRepository
+                    )
+                }
                 DashboardScreen(
                     viewModel = vm,
                     onNavigateToAddCustomer = { navController.navigate(Screen.AddCustomer.route) },
@@ -129,9 +131,11 @@ fun AppNavigation(
 
             // Screen 2: Customers List
             composable(Screen.Customers.route) {
-                val vm = CustomerListViewModel(
-                    customerRepository = appContainer.customerRepository
-                )
+                val vm = androidx.compose.runtime.remember {
+                    CustomerListViewModel(
+                        customerRepository = appContainer.customerRepository
+                    )
+                }
                 CustomerListScreen(
                     viewModel = vm,
                     onNavigateToAddCustomer = { navController.navigate(Screen.AddCustomer.route) },
@@ -152,10 +156,12 @@ fun AppNavigation(
                 )
             ) { backStackEntry ->
                 val filterArg = backStackEntry.arguments?.getString("filter") ?: "ALL"
-                val vm = FollowUpViewModel(
-                    followUpRepository = appContainer.followUpRepository,
-                    initialFilter = filterArg
-                )
+                val vm = androidx.compose.runtime.remember(filterArg) {
+                    FollowUpViewModel(
+                        followUpRepository = appContainer.followUpRepository,
+                        initialFilter = filterArg
+                    )
+                }
                 FollowUpScreen(
                     viewModel = vm,
                     onNavigateToCustomerDetail = { id ->
@@ -186,11 +192,13 @@ fun AppNavigation(
                 )
             ) { backStackEntry ->
                 val customerId = backStackEntry.arguments?.getLong("customerId") ?: 0L
-                val vm = CustomerDetailViewModel(
-                    customerId = customerId,
-                    customerRepository = appContainer.customerRepository,
-                    followUpRepository = appContainer.followUpRepository
-                )
+                val vm = androidx.compose.runtime.remember(customerId) {
+                    CustomerDetailViewModel(
+                        customerId = customerId,
+                        customerRepository = appContainer.customerRepository,
+                        followUpRepository = appContainer.followUpRepository
+                    )
+                }
                 CustomerDetailScreen(
                     viewModel = vm,
                     onNavigateBack = { navController.popBackStack() },
@@ -202,9 +210,11 @@ fun AppNavigation(
 
             // Screen 6: Add Customer
             composable(Screen.AddCustomer.route) {
-                val vm = AddEditCustomerViewModel(
-                    customerRepository = appContainer.customerRepository
-                )
+                val vm = androidx.compose.runtime.remember {
+                    AddEditCustomerViewModel(
+                        customerRepository = appContainer.customerRepository
+                    )
+                }
                 AddEditCustomerScreen(
                     viewModel = vm,
                     onNavigateBack = { navController.popBackStack() }
@@ -221,10 +231,12 @@ fun AppNavigation(
                 )
             ) { backStackEntry ->
                 val customerId = backStackEntry.arguments?.getLong("customerId") ?: 0L
-                val vm = AddEditCustomerViewModel(
-                    customerRepository = appContainer.customerRepository,
-                    existingCustomerId = customerId
-                )
+                val vm = androidx.compose.runtime.remember(customerId) {
+                    AddEditCustomerViewModel(
+                        customerRepository = appContainer.customerRepository,
+                        existingCustomerId = customerId
+                    )
+                }
                 AddEditCustomerScreen(
                     viewModel = vm,
                     onNavigateBack = { navController.popBackStack() }
@@ -233,12 +245,14 @@ fun AppNavigation(
 
             // Screen 8: Settings
             composable(Screen.Settings.route) {
-                val vm = SettingsViewModel(
-                    preferenceManager = appContainer.preferenceManager,
-                    backupRepository = appContainer.backupRepository,
-                    reminderScheduler = appContainer.reminderScheduler,
-                    reminderNotificationManager = appContainer.reminderNotificationManager
-                )
+                val vm = androidx.compose.runtime.remember {
+                    SettingsViewModel(
+                        preferenceManager = appContainer.preferenceManager,
+                        backupRepository = appContainer.backupRepository,
+                        reminderScheduler = appContainer.reminderScheduler,
+                        reminderNotificationManager = appContainer.reminderNotificationManager
+                    )
+                }
                 SettingsScreen(viewModel = vm)
             }
         }
